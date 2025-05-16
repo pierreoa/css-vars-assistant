@@ -3,9 +3,10 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id("org.jetbrains.intellij.platform") version "2.6.0"
     kotlin("jvm") version "2.1.20"
+
 }
 
-group = "cssvarsassistant"
+group = "com.stianlarsen"
 version = "1.0.0"
 
 repositories {
@@ -19,6 +20,7 @@ dependencies {
         bundledPlugin("com.intellij.css")
     }
 }
+
 
 intellijPlatform {
     sandboxContainer.set(layout.buildDirectory.dir("sandbox"))
@@ -53,24 +55,13 @@ intellijPlatform {
     }
 }
 
+
 tasks {
+
     withType<KotlinCompile> {
         kotlinOptions {
             jvmTarget = "21"
             languageVersion = "2.0"
         }
-    }
-
-
-    withType<PublishPluginTask>().configureEach {
-        val env    = System.getenv("PUBLISH_TOKEN")
-        val byProp = providers.gradleProperty("PUBLISH_TOKEN")
-        token.set(
-            env?.takeUnless { it.isBlank() }
-                ?: byProp.orNull
-                ?: throw GradleException(
-                    "PUBLISH_TOKEN must be set either as ENV or in ~/.gradle/gradle.properties"
-                )
-        )
     }
 }
