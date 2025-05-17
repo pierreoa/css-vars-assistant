@@ -8,7 +8,9 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.0.0"
+version = "1.0.1"
+
+
 
 repositories {
     mavenCentral()
@@ -28,15 +30,15 @@ intellijPlatform {
     buildSearchableOptions = false
 
     pluginConfiguration {
-        id = "com.stianlarsen.css-variables-assistant"
+        id = "cssvarsassistant"
         name = "CSS Variables Assistant"
         version = project.version.toString()
         description = """
-            <h2>CSSVariablesAssistant</h2>
+            <h2>CSS Variables Assistant</h2>
             <p>
               Enhances CSS variable usage with autocomplete and documentation.
-              Shows variable values and documentation on hover, provides
-              completion suggestions, and displays color swatches for color variables.
+              Shows <strong>variable values</strong> in completion suggestions <strong>on typing</strong> and 
+              documentation on hover. Also displays color swatches for color variables.
             </p>
             <p>
               Supercharge your CSS custom properties in WebStorm and IntelliJ-based IDEs:
@@ -87,4 +89,5 @@ tasks {
             languageVersion.set(KotlinVersion.KOTLIN_2_0)
         }
     }
+
 }

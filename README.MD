@@ -1,6 +1,6 @@
 # CSS Variables Assistant
 
-**Version**: 1.0.0  
+**Version**: 1.0.1
 **IDE**: WebStorm, IntelliJ 2025.1+  
 **Author**: Stian Larsen ([GitHub](https://github.com/stianlars1/css-vars-assistant))
 
@@ -18,10 +18,11 @@ Enhances CSS Custom Properties (variables) support with:
 
 1. `git clone https://github.com/stianlars1/css-vars-assistant.git`
 2. `cd css-vars-assistant`
-3. `./gradlew buildPlugin`
-4. In WebStorm: **Plugins → ⚙️ → Install Plugin from Disk...** → select `build/distributions/css-vars-assistant-1.0.0.zip`
-5. Restart IDE.
-
+3. `./gradlew clean buildPlugin`
+4. Test plugin by either:
+   1. In WebStorm: **Plugins → ⚙️ → Install Plugin from Disk...** → select `build/distributions/css-vars-assistant-1.0.0.zip`
+   or
+   2. From Plugin terminal: `./gradlew runIde` (this will start a new instance of WebStorm with the plugin loaded)
 ---
 
 ## Publishing to JetBrains Marketplace
@@ -29,26 +30,3 @@ Enhances CSS Custom Properties (variables) support with:
 **Prerequisites**
 - A JetBrains Account with “Plugin Developer” role
 - [Token for plugin repository (PUBLISH_TOKEN)](https://plugins.jetbrains.com/docs/marketplace/generate-plugin-signing-token.html)
-
-### 1) Configure Gradle IntelliJ Plugin
-
-In your `build.gradle.kts`, add:
-
-```kotlin
-plugins {
-  kotlin("jvm") version "1.8.21"
-  id("org.jetbrains.intellij") version "1.12.1"
-}
-
-intellij {
-  version.set("2025.1")
-  type.set("WS")               // WS = WebStorm; IC = IntelliJ IDEA
-  pluginName.set("CSS Variables Assistant")
-  plugins.set(listOf("css"))   // CSS language support
-}
-
-tasks {
-  publishPlugin {
-    token.set(System.getenv("PUBLISH_TOKEN"))
-  }
-}
