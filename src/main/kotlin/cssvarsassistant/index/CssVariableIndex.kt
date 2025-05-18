@@ -1,73 +1,114 @@
 package cssvarsassistant.index
 
-import com.intellij.lang.css.CSSLanguage
-import com.intellij.openapi.fileTypes.FileTypeRegistry
-import com.intellij.psi.PsiComment
-import com.intellij.psi.PsiFile
-import com.intellij.psi.util.PsiTreeUtil
+import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.openapi.fileTypes.FileTypes
 import com.intellij.util.indexing.*
-import com.intellij.util.io.EnumeratorStringDescriptor
-import com.intellij.util.io.KeyDescriptor
-import com.intellij.openapi.diagnostic.Logger
+import com.intellij.util.io.*
+import java.io.DataInput
+import java.io.DataOutput
 
-const val DELIMITER = "\u001F" // Non-printable character unlikely to appear in CSS
+const val DELIMITER = "\u001F"
+private const val ENTRY_SEP = "|||"
 
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
-
-    private val LOG = Logger.getInstance(CssVariableIndex::class.java)
-
     companion object {
-        val NAME: ID<String, String> = ID.create("cssvarsassistant.CssVariableIndex")
+        val NAME = ID.create<String, String>("cssvarsassistant.index")
     }
 
     override fun getName(): ID<String, String> = NAME
-    override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
-    override fun getValueExternalizer() = EnumeratorStringDescriptor.INSTANCE
-    override fun dependsOnFileContent() = true
-    override fun getVersion() = 1
+    override fun getVersion(): Int = 3
 
     override fun getInputFilter(): FileBasedIndex.InputFilter =
         DefaultFileTypeSpecificInputFilter(
-            FileTypeRegistry.getInstance().getFileTypeByExtension("css"),
-            FileTypeRegistry.getInstance().getFileTypeByExtension("scss"),
-            FileTypeRegistry.getInstance().getFileTypeByExtension("sass"),
-            FileTypeRegistry.getInstance().getFileTypeByExtension("less")
-
+            FileTypes.PLAIN_TEXT,
+            FileTypeManager.getInstance().getFileTypeByExtension("css"),
+            FileTypeManager.getInstance().getFileTypeByExtension("scss"),
+            FileTypeManager.getInstance().getFileTypeByExtension("less")
         )
 
+    override fun dependsOnFileContent(): Boolean = true
 
-    override fun getIndexer(): DataIndexer<String, String, FileContent> = DataIndexer { content ->
-        val map = hashMapOf<String, String>()
-        val file: PsiFile = content.psiFile
+    override fun getIndexer(): DataIndexer<String, String, FileContent> = DataIndexer { inputData ->
+        val map = mutableMapOf<String, String>()
 
-        if (file.language.isKindOf(CSSLanguage.INSTANCE)) {
-            file.text.split('\n').forEachIndexed { i, line ->
-                val trimmed = line.trim()
-                if (trimmed.startsWith("--")) {
-                    try {
-                        val name = trimmed.substringBefore(':').trim()
-                        val value = trimmed.substringAfter(':').substringBefore(';').trim()
-                        val commentText = findDocCommentAbove(file, i)
+        val text = inputData.contentAsText
+        val lines = text.lines()
+        var currentContext = "default"
+        val contextStack = ArrayDeque<String>()
 
-                        // Store the entire comment as is, we'll parse it when needed
-                        map[name] = "$value$DELIMITER$commentText"
-                    } catch (e: Exception) {
-                        LOG.warn("Error indexing CSS variable: $trimmed", e)
-                    }
+        var lastComment: String? = null
+        var inBlockComment = false
+        val blockComment = StringBuilder()
+
+        for (rawLine in lines) {
+            val line = rawLine.trim()
+
+            // --- Media Query Context Handling ---
+            if (line.startsWith("@media")) {
+                val m = Regex("""@media\s*\(([^)]+)\)""").find(line)
+                val mediaLabel = m?.groupValues?.get(1)?.trim() ?: "media"
+                contextStack.addLast(mediaLabel)
+                currentContext = contextStack.last()
+                continue
+            }
+            if (line == "}") {
+                if (contextStack.isNotEmpty()) {
+                    contextStack.removeLast()
+                    currentContext = contextStack.lastOrNull() ?: "default"
+                }
+                continue
+            }
+
+            // --- Comment Extraction ---
+            // Start of block comment
+            if (!inBlockComment && (line.startsWith("/*") || line.startsWith("/**"))) {
+                inBlockComment = true
+                blockComment.clear()
+                // handle one-liner
+                if (line.contains("*/")) {
+                    blockComment.append(line
+                        .removePrefix("/**").removePrefix("/*")
+                        .removeSuffix("*/").trim())
+                    lastComment = blockComment.toString().trim()
+                    inBlockComment = false
+                    continue
+                } else {
+                    blockComment.append(line
+                        .removePrefix("/**").removePrefix("/*").trim())
+                    continue
                 }
             }
-        }
+            if (inBlockComment) {
+                if (line.contains("*/")) {
+                    blockComment.append("\n" + line.removeSuffix("*/"))
+                    lastComment = blockComment.toString().trim()
+                    inBlockComment = false
+                } else {
+                    blockComment.append("\n" + line)
+                }
+                continue
+            }
 
+            // --- Variable Extraction ---
+            val varDecl = Regex("""(--[A-Za-z0-9\-_]+)\s*:\s*([^;]+);""").find(line)
+            if (varDecl != null) {
+                val varName = varDecl.groupValues[1]
+                val value = varDecl.groupValues[2].trim()
+                val comment = lastComment ?: ""
+                val entry = "$currentContext$DELIMITER$value$DELIMITER$comment"
+                val prev = map[varName]
+                map[varName] = if (prev == null) entry else prev + ENTRY_SEP + entry
+                lastComment = null // clear comment after associating
+            }
+        }
         map
     }
 
+    override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
 
-    private fun findDocCommentAbove(file: PsiFile, lineNumber: Int): String {
-        val offset = file.text.split('\n').take(lineNumber).sumOf { it.length + 1 }
-        val element = file.findElementAt(offset)
-        val comment = PsiTreeUtil.getPrevSiblingOfType(element, PsiComment::class.java)
-
-        // Get the raw comment text without stripping prefixes for parsing
-        return comment?.text?.removePrefix("/**")?.removeSuffix("*/")?.trim() ?: ""
-    }
+    override fun getValueExternalizer(): DataExternalizer<String> =
+        object : DataExternalizer<String> {
+            override fun save(out: DataOutput, value: String) = IOUtil.writeUTF(out, value)
+            override fun read(`in`: DataInput): String = IOUtil.readUTF(`in`)
+        }
 }

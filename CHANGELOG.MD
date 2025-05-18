@@ -1,6 +1,9 @@
 # CSS Variables Assistant **(--)** Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.0.2] – 2025‑05‑18
+### Changed
+- Went from parsing only `JSDoc‐style` comments `/** */` to allowing multi‑line comments `/* */`- 
 
 ## [1.0.1] – 2025‑05‑18
 ### Added

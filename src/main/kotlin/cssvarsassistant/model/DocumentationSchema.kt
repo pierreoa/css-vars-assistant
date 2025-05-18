@@ -1,4 +1,3 @@
-// src/main/kotlin/cssvarsassistant/model/DocumentationSchema.kt
 package cssvarsassistant.model
 
 /**
@@ -13,65 +12,99 @@ data class CssVarDoc(
 
 /**
  * Parses CSS variable documentation from comment text.
- * NOTE: @value tags are no longer supported — we always use the actual CSS value.
+ * Supports inline one‑liners as well as multi‑line blocks,
+ * and is case‐insensitive to @Name/@name, @Description/@description, etc.
  */
 object DocParser {
 
     /**
      * Parse a documentation comment into structured data
-     * Supports @name, @description/@desc/@doc, and @example tags (case‑insensitive).
-     * The 'value' field is always taken from the real CSS value (defaultValue).
+     *  • First tries inline tags (one‑liner comments).
+     *  • Falls back to multi‑line extraction if no inline tags present.
+     *  • Always uses the real CSS value (defaultValue).
      */
     fun parse(commentText: String, defaultValue: String = ""): CssVarDoc {
-        val lines = commentText.lines().map { it.trim() }
+        // 1) Try inline (same‑line) @name and @description tags:
+        val inlineName = INLINE_NAME
+            .find(commentText)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            .orEmpty()
 
-        // @name
-        val name = extractMultilineTag(lines, arrayOf("@name")).firstOrNull().orEmpty()
+        val inlineDesc = INLINE_DESC
+            .find(commentText)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
 
-        // @description / @desc / @doc
-        val description = extractMultilineTag(lines, arrayOf("@description", "@desc", "@doc"))
-            .joinToString(" ")
-            .takeIf { it.isNotBlank() }
-            ?: extractMainDescription(lines)
-            ?: ""
+        // 2) Split into logical lines for block parsing
+        val lines = commentText
+            .lines()
+            .map { it.trim().removePrefix("*").trim() } // strip leading `*` in multi‑line
+            .filter { it.isNotBlank() }
 
-        // always use the actual CSS value, ignore any @value tags
-        val value = defaultValue
+        // 3) Name: prefer inline, else first @name block
+        val name = if (inlineName.isNotBlank()) {
+            inlineName
+        } else {
+            extractMultilineTag(lines, arrayOf("@name")).firstOrNull().orEmpty()
+        }
 
-        // @example
+        // 4) Description: prefer inline, else block @description/desc/doc, else first non‑tag line
+        val description = when {
+            inlineDesc != null -> inlineDesc
+            else -> {
+                extractMultilineTag(lines, arrayOf("@description", "@desc", "@doc"))
+                    .joinToString(" ")
+                    .takeIf { it.isNotBlank() }
+                    ?: extractMainDescription(lines)
+                    ?: ""
+            }
+        }
+
+        // 5) Examples (only multi‑line)
         val examples = extractMultilineTag(lines, arrayOf("@example"))
 
-        return CssVarDoc(name, description, value, examples)
+        return CssVarDoc(name, description, defaultValue, examples)
     }
 
-    private fun extractMainDescription(lines: List<String>): String? =
-        lines.firstOrNull { it.isNotBlank() && !it.startsWith("@", ignoreCase = true) }
+    // Regexes for inline one‑liner extraction:
+    private val INLINE_NAME = Regex("(?i)@name\\s+([^@]+?)(?=(?:@|$))")
+    private val INLINE_DESC = Regex("(?i)@description\\s+([^@]+?)(?=(?:@|$))")
 
+    // Finds the very first non‑tag line to use as a description fallback.
+    private fun extractMainDescription(lines: List<String>): String? =
+        lines.firstOrNull { !it.startsWith("@", ignoreCase = true) }
+
+    /**
+     * Pulls out all consecutive lines belonging to any of the given tags.
+     * Stops when another “@” tag is encountered.
+     */
     private fun extractMultilineTag(lines: List<String>, tags: Array<String>): List<String> {
         val result = mutableListOf<String>()
         var inTag = false
-
-        // build a case-insensitive regex for any of the tags
+        // build a case‑insensitive “starts with” pattern for each tag
         val tagPattern = Regex("(?i)^(${tags.joinToString("|") { Regex.escape(it) }})\\b")
 
         for (line in lines) {
             val trimmed = line.trim()
             val tagMatch = tagPattern.find(trimmed)
             if (tagMatch != null) {
+                // start of a new tag
                 inTag = true
                 val rest = trimmed.substring(tagMatch.range.last + 1).trim()
                 if (rest.isNotBlank()) result.add(rest)
-                continue
-            }
-            if (inTag) {
+            } else if (inTag) {
+                // continuation of the same tag
                 if (trimmed.startsWith("@")) {
+                    // a new tag starts → stop
                     inTag = false
                 } else if (trimmed.isNotBlank()) {
                     result.add(trimmed)
                 }
             }
         }
-
         return result
     }
 }

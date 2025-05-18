@@ -23,6 +23,8 @@ dependencies {
         webstorm("2025.1")
         bundledPlugin("com.intellij.css")
     }
+    implementation(kotlin("test"))
+    testImplementation(kotlin("test-junit5"))
 }
 
 intellijPlatform {
@@ -92,6 +94,14 @@ tasks {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
             languageVersion.set(KotlinVersion.KOTLIN_2_0)
+        }
+    }
+
+    withType<Test> {
+        useJUnitPlatform()
+
+        testLogging {
+            events("passed", "skipped", "failed")
         }
     }
 
