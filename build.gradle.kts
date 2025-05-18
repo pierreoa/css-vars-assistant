@@ -65,19 +65,24 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <h3>1.0.0</h3>
+            <h2>1.0.1 – 2025‑05‑18</h2>
+            <h3>Added</h3>
             <ul>
-              <li>Production release: v1.0.0</li>
-              <li>Autocomplete only in <code>var(…)</code>, sorted by CSS value (high→low)</li>
-              <li>Hover & Quick‑Docs with color swatch and comment parsing</li>
-              <li>Removed <code>@value</code> override tags—always shows real CSS value</li>
-            </ul>
-
-            <h3>0.1.2 → 1.0.0</h3>
+              <li>Updated plugin logo</li>
+            </ul>  
+              
+            <h3>Changed</h3>
             <ul>
-              <li>Flipped suggestion order: largest first</li>
-              <li>Minor bugfixes and context‑checks improved</li>
-            </ul>
+              <li>Alphabetical sorting when all variable values are non‑numeric</li>
+              <li>Miscellaneous bugfixes and performance tweaks</li>
+            </ul>  
+              
+            <h3>Fixed</h3>
+            <ul>
+              <li>Completions now trigger immediately after typing `var(--`</li>
+              <li>Completions now trigger without needing `--` inside the `var()`</li>
+              <li>Completions now trigger when clicking inside an existing `var(--your-var)`</li>
+            </ul>                
         """.trimIndent()
     }
 }
