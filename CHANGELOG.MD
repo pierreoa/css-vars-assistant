@@ -5,14 +5,13 @@ All notable changes to this project will be documented in this file.
 ## [1.0.1] – 2025‑05‑18
 ### Added
 - logo for the plugin
+### Changed
+- Alphabetical sorting when all variable values are non‑numeric
+- Miscellaneous bugfixes and performance tweaks
 ### Fixed
-#### Completions
 - Completions now trigger immediately after typing `var(--`
 - Completions now trigger without needing `--` inside the `var()`
 - Completions now trigger when clicking inside an existing `var(--your-var)`
-#### Other
-- Alphabetical sorting when all variable values are non‑numeric
-- Miscellaneous bugfixes and performance tweaks
 
 ## [1.0.0] – 2025‑05‑16
 ### Added
