@@ -1,40 +1,43 @@
 # CSS Variables Assistant
 
-**Version**: 1.1.0
-**IDE**: WebStorm, IntelliJ 2025.1+  
+**Version**: 1.1.0  
+**IDE**: WebStorm / IntelliJ 2025.1+  
 **Author**: Stian Larsen ([GitHub](https://github.com/stianlars1/css-vars-assistant))
 
-Enhances CSS Custom Properties (variables) support with:
+Enhances CSS Custom Properties with:
 
-- **Autocomplete** inside `var(--...)`
-- **Quick Documentation** (Ctrl+Q / hover) showing value, description, example and color swatch
-- **Comment Tags**: `@name`, `@description` (or `@desc`/`@doc`), `@example`
-- **Sorted Suggestions**: largest CSS values first
-- **Works in**: CSS, SCSS, SASS, LESS, JS/TS, JSX/TSX
+- **Context‑aware autocomplete** inside <code>var(--…)</code>
+- **Quick Documentation** (<kbd>Ctrl</kbd>+<kbd>Q</kbd> / hover) showing value table, description, examples &amp; colour swatches
+- **JSDoc‑style comment tags**: <code>@name</code>, <code>@description</code> (or <code>@desc</code>), <code>@example</code>
+- **Smartly ordered suggestions**: Default/Light → Dark → desktop‑first break‑points → mobile‑first → other media
+- **Works in**: CSS, SCSS, SASS, LESS, JavaScript / TypeScript, and JSX / TSX files
 
-## v1.0.2 Highlights
+## v 1.1.0 Highlights
 
-- Configure plugin via **Settings → CSS Variables Assistant**.
-- Toggle context-aware completions/documentation.
-- Full support for all CSS variable comment formats.
-- True-to-source color value display (`rgb`, `hsl`, `hex` etc).
-- WebAIM color contrast checker link in documentation.
+- **Alias resolution** – completions &amp; docs follow <code>var(--alias)</code> chains and show the real value.
+- **Duplicate squashing** – identical <em>(context + value)</em> rows collapse into one.
+- **Light counts as primary** – <code>prefers-color-scheme: light</code> is treated the same as <code>default</code>.
+- **Smart documentation order** – Default/Light → Dark → <code>max‑width</code> (large→small) → <code>min‑width</code> (small→large) → other media.
+- **Dual colour swatches** – always displayed for light/dark pairs, even when they alias to identical hues.
+- **Stricter index filter** – ignores templates / non‑style files (<code>.txt</code>, <code>.md</code>, etc.).
+- **Settings page** – toggle context value display under **Settings → CSS Variables Assistant**.
 
 ---
 
-## Installation (Locally)
+## Installation (locally)
 
 1. `git clone https://github.com/stianlars1/css-vars-assistant.git`
 2. `cd css-vars-assistant`
 3. `./gradlew clean buildPlugin`
-4. Test plugin by either:
-   1. In WebStorm: **Plugins → ⚙️ → Install Plugin from Disk...** → select `build/distributions/css-vars-assistant-1.0.0.zip`
-   or
-   2. From Plugin terminal: `./gradlew runIde` (this will start a new instance of WebStorm with the plugin loaded)
+4. Test the plugin by either
+   1. **Plugins → ⚙️ → Install Plugin from Disk…** → select `build/distributions/css-vars-assistant-1.1.0.zip`, or
+   2. `./gradlew runIde` (start a sandbox IDE with the plugin loaded).
+
 ---
 
 ## Publishing to JetBrains Marketplace
 
 **Prerequisites**
-- A JetBrains Account with “Plugin Developer” role
-- [Token for plugin repository (PUBLISH_TOKEN)](https://plugins.jetbrains.com/docs/marketplace/generate-plugin-signing-token.html)
+
+- JetBrains account with **Plugin Developer** role
+- [Marketplace publish token (PUBLISH_TOKEN)](https://plugins.jetbrains.com/docs/marketplace/generate-plugin-signing-token.html)
