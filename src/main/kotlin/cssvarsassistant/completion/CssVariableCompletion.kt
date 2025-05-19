@@ -15,14 +15,14 @@ import cssvarsassistant.documentation.ColorParser
 import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
+import cssvarsassistant.settings.CssVarsAssistantSettings
 import java.awt.Component
 import java.awt.Graphics
 import javax.swing.Icon
 
-private const val ENTRY_SEP = "|||"
-
 class CssVariableCompletion : CompletionContributor() {
     private val LOG = Logger.getInstance(CssVariableCompletion::class.java)
+    private val ENTRY_SEP = "|||"
 
     init {
         extend(
@@ -35,6 +35,7 @@ class CssVariableCompletion : CompletionContributor() {
                     result: CompletionResultSet
                 ) {
                     try {
+                        // Only inside var(...) args
                         val pos = params.position
                         val fn = PsiTreeUtil.getParentOfType(pos, CssFunction::class.java) ?: return
                         if (fn.name != "var") return
@@ -43,16 +44,20 @@ class CssVariableCompletion : CompletionContributor() {
                         val off = params.offset
                         if (off <= l || off > r) return
 
+                        // Prefix without leading --
                         val rawPref = result.prefixMatcher.prefix
                         val simple = rawPref.removePrefix("--")
                         val project = pos.project
                         val scope = GlobalSearchScope.projectScope(project)
+                        val settings = CssVarsAssistantSettings.getInstance()
 
                         data class Entry(
                             val rawName: String,
                             val display: String,
-                            val valueEntries: List<Triple<String, String, String>>, // context, value, doc
-                            val doc: String
+                            val mainValue: String,
+                            val allValues: List<Pair<String, String>>, // context, value
+                            val doc: String,
+                            val isAllColor: Boolean
                         )
 
                         val entries = mutableListOf<Entry>()
@@ -69,21 +74,27 @@ class CssVariableCompletion : CompletionContributor() {
 
                                 if (allVals.isEmpty()) return@forEach
 
-                                // Parse context/value/doc for each entry
-                                val valueEntries = allVals.mapNotNull {
+                                // List of context-value pairs
+                                val valuePairs = allVals.mapNotNull {
                                     val parts = it.split(DELIMITER, limit = 3)
-                                    if (parts.size >= 2) {
-                                        Triple(parts[0], parts[1], parts.getOrElse(2) { "" })
-                                    } else null
+                                    if (parts.size >= 2) parts[0] to parts[1] else null
                                 }
-                                // Find the default context if present
-                                val default = valueEntries.find { it.first == "default" }
-                                val main = default ?: valueEntries.first()
-                                // Pick doc from first entry with doc-comment
-                                val docEntry = valueEntries.firstOrNull { it.third.isNotBlank() } ?: main
-                                val doc = DocParser.parse(docEntry.third, main.second).description
+                                val values = valuePairs.map { it.second }.distinct()
+                                val mainValue = valuePairs.find { it.first == "default" }?.second
+                                    ?: valuePairs.first().second
 
-                                entries += Entry(rawName, display, valueEntries, doc)
+                                // Doc comment from any doc-comment entry, fallback to default, fallback to first
+                                val docEntry = allVals.firstOrNull { it.substringAfter(DELIMITER).isNotBlank() }
+                                    ?: allVals.first()
+                                val commentTxt = docEntry.substringAfter(DELIMITER)
+                                val doc = DocParser.parse(commentTxt, mainValue).description
+
+                                // Only true if ALL values parse as color
+                                val isAllColor = values.isNotEmpty() && values.all { ColorParser.parseCssColor(it) != null }
+
+                                entries += Entry(
+                                    rawName, display, mainValue, valuePairs, doc, isAllColor
+                                )
                             }
 
                         entries.sortBy { it.display }
@@ -93,32 +104,36 @@ class CssVariableCompletion : CompletionContributor() {
                                 ?.let { it.take(40) + if (it.length > 40) "…" else "" }
                                 ?: ""
 
-                            // Gather color values only (for icon rendering)
-                            val colorVals = e.valueEntries.mapNotNull { ColorParser.parseCssColor(it.second) }
-                            val mainVal =
-                                (e.valueEntries.find { it.first == "default" } ?: e.valueEntries.first()).second
+                            // ICON LOGIC (with double swatch if 2 color values)
+                            val colorIcons = e.allValues.mapNotNull { (_, v) ->
+                                ColorParser.parseCssColor(v)?.let { ColorIcon(12, it, false) }
+                            }.distinctBy { it.iconColor }
+                            val icon: Icon = when {
+                                e.isAllColor && colorIcons.size == 2 -> DoubleColorIcon(colorIcons[0], colorIcons[1])
+                                e.isAllColor && colorIcons.isNotEmpty() -> colorIcons[0]
+                                isSizeValue(e.mainValue) -> AllIcons.FileTypes.Css
+                                else -> AllIcons.Nodes.Property
+                            }
 
-                            val (icon, tailText) = when {
-                                colorVals.size == 2 -> DoubleColorIcon(
-                                    ColorIcon(12, colorVals[0], false),
-                                    ColorIcon(12, colorVals[1], false)
-                                ) to
-                                        e.valueEntries.take(2).joinToString(" / ") { it.second }
-
-                                colorVals.size > 2 -> ColorIcon(
-                                    12,
-                                    colorVals[0],
-                                    false
-                                ) to "${mainVal} (+${colorVals.size - 1})"
-
-                                colorVals.size == 1 -> ColorIcon(12, colorVals[0], false) to mainVal
-                                else -> {
-                                    val extraCount = e.valueEntries.size - 1
-                                    val iconFallback =
-                                        if (e.valueEntries.any { isSizeValue(it.second) }) AllIcons.FileTypes.Css
-                                        else AllIcons.Nodes.Property
-                                    iconFallback to (mainVal + if (extraCount > 0) " (+$extraCount)" else "")
+                            // TYPE TEXT LOGIC
+                            val valueText = when {
+                                // Both context and color, context-aware value listing (if enabled in settings)
+                                e.isAllColor && e.allValues.size > 1 && settings.showContextValues -> {
+                                    e.allValues.joinToString(" / ") { (ctx, v) ->
+                                        when {
+                                            "dark" in ctx.lowercase() -> "\uD83C\uDF19 $v" // 🌙
+                                            else -> v
+                                        }
+                                    }
                                 }
+                                // Just color(s)
+                                e.isAllColor -> e.mainValue
+
+                                // Not all are color: normal value (+N) if >1 and context enabled
+                                e.allValues.size > 1 && settings.showContextValues -> {
+                                    "${e.mainValue} (+${e.allValues.size - 1})"
+                                }
+                                else -> e.mainValue
                             }
 
                             val elt = LookupElementBuilder
@@ -126,7 +141,7 @@ class CssVariableCompletion : CompletionContributor() {
                                 .withPresentableText(e.display)
                                 .withLookupString(e.display)
                                 .withIcon(icon)
-                                .withTypeText(tailText, true)
+                                .withTypeText(valueText, true)
                                 .withTailText(if (short.isNotBlank()) " — $short" else "", true)
                                 .withInsertHandler { ctx2, _ ->
                                     ctx2.document.replaceString(ctx2.startOffset, ctx2.tailOffset, e.rawName)
@@ -143,12 +158,14 @@ class CssVariableCompletion : CompletionContributor() {
         )
     }
 
+    /** Detect simple “size” constants (px, rem, em, %…) */
     private fun isSizeValue(raw: String): Boolean {
         return Regex("""^-?\d+(\.\d+)?(px|em|rem|ch|ex|vh|vw|vmin|vmax|%)$""", RegexOption.IGNORE_CASE)
             .matches(raw.trim())
     }
 }
 
+// Render two icons side by side (for two colors)
 class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
     override fun getIconWidth() = icon1.iconWidth + icon2.iconWidth + 2
     override fun getIconHeight() = maxOf(icon1.iconHeight, icon2.iconHeight)

@@ -58,7 +58,7 @@ object DocParser {
                 extractMultilineTag(lines, arrayOf("@description", "@desc", "@doc"))
                     .joinToString(" ")
                     .takeIf { it.isNotBlank() }
-                    ?: extractMainDescription(lines)
+                    ?: extractMainDescription(lines, defaultValue)  // Pass the defaultValue to check
                     ?: ""
             }
         }
@@ -74,17 +74,26 @@ object DocParser {
     private val INLINE_DESC = Regex("(?i)@description\\s+([^@]+?)(?=(?:@|$))")
 
     // Finds the very first non‑tag line to use as a description fallback.
-    private fun extractMainDescription(lines: List<String>): String? =
-        lines.firstOrNull { !it.startsWith("@", ignoreCase = true) }
+    // Modified to check if the description already contains the value
+    private fun extractMainDescription(lines: List<String>, value: String): String? {
+        val firstNonTag = lines.firstOrNull { !it.startsWith("@", ignoreCase = true) } ?: return null
+
+        // Check if the description already contains the value and remove it if it does
+        return if (value.isNotBlank() && firstNonTag.startsWith(value, ignoreCase = true)) {
+            firstNonTag.substring(value.length).trim()
+        } else {
+            firstNonTag
+        }
+    }
 
     /**
      * Pulls out all consecutive lines belonging to any of the given tags.
-     * Stops when another “@” tag is encountered.
+     * Stops when another "@" tag is encountered.
      */
     private fun extractMultilineTag(lines: List<String>, tags: Array<String>): List<String> {
         val result = mutableListOf<String>()
         var inTag = false
-        // build a case‑insensitive “starts with” pattern for each tag
+        // build a case‑insensitive "starts with" pattern for each tag
         val tagPattern = Regex("(?i)^(${tags.joinToString("|") { Regex.escape(it) }})\\b")
 
         for (line in lines) {

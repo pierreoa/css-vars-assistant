@@ -106,6 +106,6 @@ class ColorParserTest {
         assertEquals("#0000FF", ColorParser.toHexString("hsla(240 100% 50% / 1)"))
     }
     @Test fun `hwb works`() {
-        assertEquals("#FFFFFF", ColorParser.toHexString("hwb(0 0% 0%)"))
+        assertEquals("#FF0000", ColorParser.toHexString("hwb(0 0% 0%)"))
     }
 }

@@ -1,6 +1,6 @@
 # CSS Variables Assistant
 
-**Version**: 1.0.1
+**Version**: 1.0.2
 **IDE**: WebStorm, IntelliJ 2025.1+  
 **Author**: Stian Larsen ([GitHub](https://github.com/stianlars1/css-vars-assistant))
 
@@ -11,6 +11,14 @@ Enhances CSS Custom Properties (variables) support with:
 - **Comment Tags**: `@name`, `@description` (or `@desc`/`@doc`), `@example`
 - **Sorted Suggestions**: largest CSS values first
 - **Works in**: CSS, SCSS, SASS, LESS, JS/TS, JSX/TSX
+
+## v1.0.2 Highlights
+
+- Configure plugin via **Settings → CSS Variables Assistant**.
+- Toggle context-aware completions/documentation.
+- Full support for all CSS variable comment formats.
+- True-to-source color value display (`rgb`, `hsl`, `hex` etc).
+- WebAIM color contrast checker link in documentation.
 
 ---
 

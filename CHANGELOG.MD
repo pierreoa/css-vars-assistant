@@ -1,9 +1,35 @@
 # CSS Variables Assistant **(--)** Changelog
 
 All notable changes to this project will be documented in this file.
-## [1.0.2] – 2025‑05‑18
+
+## [1.0.2] – 2025‑05‑19
+
+### Added
+- **Settings page:** Plugin is now user-configurable (toggle context-based variable values).
+- **Smarter completions:**
+  - Dual color swatch if a variable has both light and dark color values.
+  - All original value syntaxes shown (e.g., `#fff`, `hsl(0 0% 100%)`, `rgb(…))`).
+  - Context-aware completions: e.g. “🌙” for dark mode, no overlays.
+- **Color swatches:**
+  - Now supports **shadcn/ui** color variables format, `--foreground: 0 0% 100%;`.
+- **Robust comment parsing:** All major CSS comment styles now supported for variable docs (JSDoc, plain, single-line, multiline).
+- **Context tracking:** Indexer now properly tracks context (media queries, dark/light, nested queries, etc).
+- **Documentation enhancements:**
+  - Multi-context variables shown as a table.
+  - Color swatches always use original value syntax.
+  - WebAIM contrast checker link for color variables.
+
+
 ### Changed
-- Went from parsing only `JSDoc‐style` comments `/** */` to allowing multi‑line comments `/* */`- 
+- **Consistent UI:**
+  - No overlay/context icons on completion swatch—context info is right-aligned only.
+  - Completions/docs now fully respect user settings.
+
+### Fixed
+- **Comment parsing bugs:** One-line, multi-line, and mixed-format doc-comments now always recognized.
+- **Threading issues:** Docs and completions no longer trigger read-access warnings.
+
+
 
 ## [1.0.1] – 2025‑05‑18
 ### Added

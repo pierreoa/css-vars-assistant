@@ -48,5 +48,12 @@
             language="LESS"
             implementationClass="cssvarsassistant.documentation.CssVariableDocumentation"
             order="first"/>
+
+    <applicationConfigurable
+            id="cssvarsassistant.settings"
+            instance="cssvarsassistant.settings.CssVarsAssistantConfigurable"
+            displayName="CSS Variables Assistant"
+            parentId="tools"
+    />
   </extensions>
 </idea-plugin>

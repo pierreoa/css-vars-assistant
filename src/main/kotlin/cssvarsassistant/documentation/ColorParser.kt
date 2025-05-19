@@ -4,133 +4,152 @@ import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/**
- * Parses CSS color strings into AWT Color,
- * and converts Colors back to hex strings.
- */
 object ColorParser {
     // ---- Regexes for various CSS syntaxes ----
-    private val hexRe     = Regex("^#([0-9a-fA-F]{3,8})\$")
-    private val rgbRe     = Regex("^rgba?\\(([^)]*)\\)\$")
-    private val hslRe     = Regex("^hsla?\\(([^)]*)\\)\$")
-    private val bareHslRe = Regex("^([\\d.]+)\\s+([\\d.]+%)\\s+([\\d.]+%)\$")
-    private val hwbRe     = Regex("^hwb\\(([^)]*)\\)\$")
+    private val hexRe = Regex("^#([0-9a-fA-F]{3,8})$")
+    private val rgbRe = Regex("^rgba?\\(([^)]*)\\)$")
+    private val hslRe = Regex("^hsla?\\(([^)]*)\\)$")
+    private val bareHslRe = Regex("^([\\d.]+)\\s+([\\d.]+%)\\s+([\\d.]+%)$")
+    private val hwbRe = Regex("^hwb\\(([^)]*)\\)$")
 
     /**
-     * Try to parse **any** CSS color string into a java.awt.Color.
-     * Supports:
-     *  • #RGB, #RRGGBB, #AARRGGBB
-     *  • rgb(…)/rgba(…) with comma or space separated, percentages or integers
-     *  • hsl(…)/hsla(…) with comma or slash separators
-     *  • bare HSL triplets (e.g. `0 50% 50%`)
-     *  • hwb(…)
-     *  • TODO: lab()/lch()/oklab()/oklch() if you ever need them
+     * Parses a CSS color string to a java.awt.Color, or null if not recognized.
+     * Supports hex, rgb(a), hsl(a), shadcn “0 0% 100%” (bare HSL), HWB, etc.
      */
-    fun parseCssColor(input: String): Color? {
-        val s = input.trim()
+    fun parseCssColor(raw: String): Color? {
+        val s = raw.trim()
 
-        // 1) Hex (#RGB, #RRGGBB or #AARRGGBB)
-        hexRe.matchEntire(s)?.groupValues?.get(1)?.let { rawHex ->
-            var hex = rawHex
-            // expand #RGB → RRGGBB
-            if (hex.length == 3) {
-                hex = hex.map { "$it$it" }.joinToString("")
-            }
-            return try {
-                // if length==8, it's AARRGGBB
-                Color(hex.toLong(16).toInt(), hex.length > 6)
-            } catch (_: NumberFormatException) {
-                null
-            }
+        hexRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseHexColor(it) }
+        rgbRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseRgbColor(it) }
+        hslRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseHslColor(it) }
+        bareHslRe.matchEntire(s)?.destructured?.let { (h, s2, l2) ->
+            return hslToColor(h.toFloat(), s2.removeSuffix("%").toFloat(), l2.removeSuffix("%").toFloat())
         }
-
-        // 2) rgb()/rgba()
-        rgbRe.matchEntire(s)?.groupValues
-            ?.get(1)
-            ?.let { body ->
-                val parts = body
-                    .split(',', ' ')
-                    .filter { it.isNotBlank() }
-                if (parts.size >= 3) {
-                    fun parseChannel(v: String): Int =
-                        if (v.endsWith("%")) {
-                            // percent → 0–255
-                            (v.dropLast(1).toFloatOrNull()?.times(2.55f)
-                                ?.roundToInt())?.coerceIn(0, 255) ?: 0
-                        } else {
-                            v.toIntOrNull()?.coerceIn(0, 255) ?: 0
-                        }
-                    val r = parseChannel(parts[0])
-                    val g = parseChannel(parts[1])
-                    val b = parseChannel(parts[2])
-                    val a = parts.getOrNull(3)
-                        ?.toFloatOrNull()
-                        ?.times(255f)
-                        ?.roundToInt()
-                        ?.coerceIn(0, 255)
-                        ?: 255
-                    return Color(r, g, b, a)
-                }
-            }
-
-        // 3) hsl()/hsla()
-        hslRe.matchEntire(s)?.groupValues
-            ?.get(1)
-            ?.let { body ->
-                // allow comma or slash or space separated
-                val parts = body
-                    .split(',', '/', ' ')
-                    .filter { it.isNotBlank() }
-                if (parts.size >= 3) {
-                    val h = parts[0].toFloatOrNull()?.rem(360f) ?: 0f
-                    val sPct = parts[1].removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f
-                    val lPct = parts[2].removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f
-                    val alpha = parts.getOrNull(3)?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 1f
-                    return hslToRgb(h, sPct, lPct, alpha)
-                }
-            }
-
-        // 4) bare HSL triplet (e.g. `0 50% 50%`)
-        bareHslRe.matchEntire(s)?.destructured?.let { (h, sPct, lPct) ->
-            return hslToRgb(
-                h.toFloatOrNull()?.rem(360f) ?: 0f,
-                sPct.removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f,
-                lPct.removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f,
-                1f
-            )
-        }
-
-        // 5) HWB
-        hwbRe.matchEntire(s)?.groupValues
-            ?.get(1)
-            ?.let { body ->
-                val parts = body
-                    .split(',', '/', ' ')
-                    .filter { it.isNotBlank() }
-                if (parts.size >= 3) {
-                    val h = parts[0].toFloatOrNull()?.rem(360f) ?: 0f
-                    val w = parts[1].removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f
-                    val b = parts[2].removeSuffix("%").toFloatOrNull()?.div(100f) ?: 0f
-                    val alpha = parts.getOrNull(3)?.removeSuffix("%")?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 1f
-
-                    // convert via HSL at 50% light
-                    val c = (1f - w - b).coerceAtLeast(0f)
-                    val base = hslToRgb(h, 1f, 0.5f, 1f)
-                    val r = (w + c * (base.red   / 255f)).coerceIn(0f, 1f)
-                    val g = (w + c * (base.green / 255f)).coerceIn(0f, 1f)
-                    val bl = (w + c * (base.blue  / 255f)).coerceIn(0f, 1f)
-                    return Color(
-                        (r * 255).roundToInt(),
-                        (g * 255).roundToInt(),
-                        (bl* 255).roundToInt(),
-                        (alpha * 255).roundToInt()
-                    )
-                }
-            }
-
-        // 6) (Future) lab(), lch(), oklab(), oklch() → add here if you need them
+        hwbRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseHwbColor(it) }
 
         return null
+    }
+
+    private fun parseHexColor(hex: String): Color? = try {
+        when (hex.length) {
+            3 -> Color(
+                Integer.valueOf(hex.substring(0, 1).repeat(2), 16),
+                Integer.valueOf(hex.substring(1, 2).repeat(2), 16),
+                Integer.valueOf(hex.substring(2, 3).repeat(2), 16)
+            )
+
+            6 -> Color(
+                Integer.valueOf(hex.substring(0, 2), 16),
+                Integer.valueOf(hex.substring(2, 4), 16),
+                Integer.valueOf(hex.substring(4, 6), 16)
+            )
+
+            8 -> Color(
+                Integer.valueOf(hex.substring(2, 4), 16),
+                Integer.valueOf(hex.substring(4, 6), 16),
+                Integer.valueOf(hex.substring(6, 8), 16),
+                Integer.valueOf(hex.substring(0, 2), 16)
+            )
+
+            else -> null
+        }
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun parseRgbColor(rgb: String): Color? {
+        val cleaned = rgb.replace("/", " ")
+        val parts = cleaned.split(',', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+        return try {
+            val (r, g, b) = parts.take(3).mapIndexed { i, v ->
+                when {
+                    v.endsWith("%") -> (255 * v.removeSuffix("%").toFloat() / 100).roundToInt()
+                    else -> v.toInt()
+                }.coerceIn(0, 255)
+            }
+            // Alpha, if present
+            val a = parts.getOrNull(3)?.let {
+                when {
+                    it.endsWith("%") -> (255 * it.removeSuffix("%").toFloat() / 100).roundToInt().coerceIn(0, 255)
+                    it.toFloatOrNull() != null -> (it.toFloat() * 255).roundToInt().coerceIn(0, 255)
+                    else -> 255
+                }
+            } ?: 255
+            Color(r, g, b, a)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseHslColor(hsl: String): Color? {
+        val cleaned = hsl.replace("/", " ").replace(",", " ")
+        val parts = cleaned.split(' ').filter { it.isNotBlank() }
+        return try {
+            val h = parts[0].toFloat()
+            val s = parts[1].removeSuffix("%").toFloat()
+            val l = parts[2].removeSuffix("%").toFloat()
+            hslToColor(h, s, l)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** Converts HSL to Color. Accepts s/l as percent (0–100). */
+    private fun hslToColor(h: Float, s: Float, l: Float): Color {
+        val s1 = s / 100f
+        val l1 = l / 100f
+        val c = (1 - abs(2 * l1 - 1)) * s1
+        val x = c * (1 - abs((h / 60f) % 2 - 1))
+        val m = l1 - c / 2
+        val (r1, g1, b1) = when {
+            h < 60 -> listOf(c, x, 0f)
+            h < 120 -> listOf(x, c, 0f)
+            h < 180 -> listOf(0f, c, x)
+            h < 240 -> listOf(0f, x, c)
+            h < 300 -> listOf(x, 0f, c)
+            else -> listOf(c, 0f, x)
+        }
+        return Color(
+            ((r1 + m) * 255).roundToInt().coerceIn(0, 255),
+            ((g1 + m) * 255).roundToInt().coerceIn(0, 255),
+            ((b1 + m) * 255).roundToInt().coerceIn(0, 255)
+        )
+    }
+
+    private fun parseHwbColor(hwb: String): Color? {
+        val cleaned = hwb.replace("/", " ")
+        val parts = cleaned.split(',', ' ').filter { it.isNotBlank() }
+        if (parts.size < 3) return null
+        return try {
+            val h = parts[0].toFloat().rem(360f)
+            val w = parts[1].removeSuffix("%").toFloat() / 100f
+            val b = parts[2].removeSuffix("%").toFloat() / 100f
+            val alpha = parts.getOrNull(3)?.let {
+                if (it.endsWith("%")) it.removeSuffix("%").toFloat() / 100f
+                else it.toFloatOrNull() ?: 1f
+            } ?: 1f
+
+            // Correct handling of edge cases (CSS spec):
+            if ((w + b) >= 1f) {
+                val grayness = (w / (w + b)).coerceIn(0f, 1f)
+                val gray = (grayness * 255).roundToInt().coerceIn(0, 255)
+                return Color(gray, gray, gray, (alpha * 255).roundToInt().coerceIn(0, 255))
+            }
+
+            val c = 1f - w - b
+            val base = hslToColor(h, 100f, 50f)
+            val r = (w + c * (base.red / 255f)).coerceIn(0f, 1f)
+            val g = (w + c * (base.green / 255f)).coerceIn(0f, 1f)
+            val bl = (w + c * (base.blue / 255f)).coerceIn(0f, 1f)
+            Color(
+                (r * 255).roundToInt(),
+                (g * 255).roundToInt(),
+                (bl * 255).roundToInt(),
+                (alpha * 255).roundToInt()
+            )
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**
@@ -148,27 +167,4 @@ object ColorParser {
     fun toHexString(input: String): String? {
         return parseCssColor(input)?.let(::colorToHex)
     }
-
-    // ----------- Internal HSL → RGB conversion -------------
-    private fun hslToRgb(h: Float, s: Float, l: Float, alpha: Float): Color {
-        val c = (1f - abs(2 * l - 1f)) * s
-        val x = c * (1f - abs((h / 60f) % 2 - 1f))
-        val m = l - c / 2f
-        val (r1, g1, b1) = when {
-            h < 60f   -> Triple(c, x, 0f)
-            h < 120f  -> Triple(x, c, 0f)
-            h < 180f  -> Triple(0f, c, x)
-            h < 240f  -> Triple(0f, x, c)
-            h < 300f  -> Triple(x, 0f, c)
-            else      -> Triple(c, 0f, x)
-        }
-        return Color(
-            ((r1 + m) * 255).roundToInt(),
-            ((g1 + m) * 255).roundToInt(),
-            ((b1 + m) * 255).roundToInt(),
-            (alpha * 255).roundToInt()
-        )
-    }
 }
-
-
