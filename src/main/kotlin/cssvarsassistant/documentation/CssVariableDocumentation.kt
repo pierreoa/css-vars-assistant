@@ -57,7 +57,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             val sorted = unique.sortedWith(
                 compareBy(
                     { rank(it.first).first },                  // gruppe 0‑5
-                    { rank(it.first).second ?: Int.MAX_VALUE}, // tall‑hint (null ⇒ sist)
+                    { rank(it.first).second ?: Int.MAX_VALUE }, // tall‑hint (null ⇒ sist)
                     { rank(it.first).third }                   // alfabetisk fallback
                 )
             )
@@ -75,21 +75,23 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             sb.append("<small>CSS Variable: <code>$varName</code></small>").append(DocumentationMarkup.DEFINITION_END)
                 .append(DocumentationMarkup.CONTENT_START)
 
-            if (settings.showContextValues && sorted.size > 1) {
-                sb.append("<p><b>Values:</b></p><table>").append("<tr><th align='left'>Context</th>")
-                    .append("<th style='width:14px'></th>").append("<th align='left'>Value</th></tr>")
-                for ((ctx, value, _) in sorted) {
-                    val isColour = ColorParser.parseCssColor(value) != null
-                    sb.append("<tr><td style='color:#888;padding-right:10px'>").append(contextLabel(ctx))
-                        .append("</td><td>")
-                    if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
-                    sb.append("</td><td>").append(StringUtil.escapeXmlEntities(value)).append("</td></tr>")
-                }
-                sb.append("</table>")
-            } else {
-                sb.append("<p><b>Value:</b></p><code>").append(StringUtil.escapeXmlEntities(sorted.first().second))
-                    .append("</code>")
+            sb.append("<p><b>Values:</b></p>")
+                .append("<table>")
+                .append("<tr><td>Context</td>")
+                .append("<td>&nbsp;</td>")
+                .append("<td align='left'>Value</td></tr>")
+
+            for ((ctx, value, _) in sorted) {
+                val isColour = ColorParser.parseCssColor(value) != null
+                sb.append("<tr><td style='color:#888;padding-right:10px'>")
+                    .append(contextLabel(ctx))
+                    .append("</td><td>")
+                if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
+                sb.append("</td><td>")
+                    .append(StringUtil.escapeXmlEntities(value))
+                    .append("</td></tr>")
             }
+            sb.append("</table>")
 
             if (doc.description.isNotBlank()) sb.append("<p><b>Description:</b><br/>")
                 .append(StringUtil.escapeXmlEntities(doc.description)).append("</p>")
@@ -102,15 +104,15 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
             // WebAIM link for first colour value
             sorted.mapNotNull { ColorParser.parseCssColor(it.second) }.firstOrNull()?.let { c ->
-                    val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
-                    sb.append(
-                        """<p style='margin-top:10px'>
+                val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
+                sb.append(
+                    """<p style='margin-top:10px'>
                              |<a target="_blank"
                              |   href="https://webaim.org/resources/contrastchecker/?fcolor=$hex&bcolor=000000">
                              |Check contrast on WebAIM Contrast Checker
                              |</a></p>""".trimMargin()
-                    )
-                }
+                )
+            }
 
             sb.append(DocumentationMarkup.CONTENT_END).append("</body></html>")
 
@@ -137,11 +139,11 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 .filter { it.isNotBlank() }
 
         val defValue = entries.mapNotNull {
-                val p = it.split(DELIMITER, limit = 3)
-                if (p.size >= 2) p[0] to p[1] else null
-            }.let { pairs ->
-                pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
-            } ?: return raw
+            val p = it.split(DELIMITER, limit = 3)
+            if (p.size >= 2) p[0] to p[1] else null
+        }.let { pairs ->
+            pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
+        } ?: return raw
 
         return resolveVarValue(defValue, scope, visited + ref, depth + 1)
     }
