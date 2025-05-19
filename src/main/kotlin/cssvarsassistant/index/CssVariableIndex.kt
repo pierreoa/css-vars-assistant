@@ -1,9 +1,10 @@
 package cssvarsassistant.index
 
-import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.fileTypes.FileTypes
 import com.intellij.util.indexing.*
-import com.intellij.util.io.*
+import com.intellij.util.io.DataExternalizer
+import com.intellij.util.io.EnumeratorStringDescriptor
+import com.intellij.util.io.IOUtil
+import com.intellij.util.io.KeyDescriptor
 import java.io.DataInput
 import java.io.DataOutput
 
@@ -19,12 +20,13 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
     override fun getVersion(): Int = 3
 
     override fun getInputFilter(): FileBasedIndex.InputFilter =
-        DefaultFileTypeSpecificInputFilter(
-            FileTypes.PLAIN_TEXT,
-            FileTypeManager.getInstance().getFileTypeByExtension("css"),
-            FileTypeManager.getInstance().getFileTypeByExtension("scss"),
-            FileTypeManager.getInstance().getFileTypeByExtension("less")
-        )
+        FileBasedIndex.InputFilter { virtualFile ->
+            // Accept only files that LOOK like style‑sheets
+            when (virtualFile.extension?.lowercase()) {
+                "css", "scss", "sass", "less" -> true                    // example extra types
+                else -> false                                       // ignore *.txt, *.md, …
+            }
+        }
 
     override fun dependsOnFileContent(): Boolean = true
 
@@ -66,15 +68,19 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 blockComment.clear()
                 // handle one-liner
                 if (line.contains("*/")) {
-                    blockComment.append(line
-                        .removePrefix("/**").removePrefix("/*")
-                        .removeSuffix("*/").trim())
+                    blockComment.append(
+                        line
+                            .removePrefix("/**").removePrefix("/*")
+                            .removeSuffix("*/").trim()
+                    )
                     lastComment = blockComment.toString().trim()
                     inBlockComment = false
                     continue
                 } else {
-                    blockComment.append(line
-                        .removePrefix("/**").removePrefix("/*").trim())
+                    blockComment.append(
+                        line
+                            .removePrefix("/**").removePrefix("/*").trim()
+                    )
                     continue
                 }
             }

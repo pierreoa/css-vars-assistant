@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] – 2025‑05‑19
+### Added
+- **Alias resolution:** `--alias: var(--real);` now resolves to the literal value in completion & docs.
+- **Duplicate squashing:** identical `(context,value)` pairs collapse into one row.
+- **Smart sorting in docs:** order is Default / Light → Dark → `max‑width` (desktop‑first, large → small) → `min‑width` (mobile‑first, small → large) → other media queries.
+- **Light counts as primary:** `prefers-color-scheme: light` is treated the same as `default`.
+- **Stricter index filter:** template/text files are ignored.
+
+### Changed
+- Completion “type text” mirrors the new smart order.
+- Documentation shows context values instead of “(+N)” when context display is enabled.
+- `DoubleColorIcon` now appears even when light/dark values alias to colours.
+
+### Fixed
+- No more duplicate “Default” rows for repeated declarations with the same value.
+- Docs no longer show raw `var(--xyz)` when it can be resolved.
+- Colour swatches & WebAIM links work for resolved aliases too.
+
 ## [1.0.2] – 2025‑05‑19
 
 ### Added

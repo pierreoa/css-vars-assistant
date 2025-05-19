@@ -12,109 +12,108 @@ import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 
+
+/**
+ * Quick‑doc / hover popup for CSS custom properties.
+ * – Resolves alias chains  var(--x) → literal value
+ * – Deduplicates identical (context,value) pairs
+ * – Smart sorts: Default/Light → Dark → max‑width (large→small) →
+ *   min‑width (small→large) → other media queries → alphabetical rest
+ */
 class CssVariableDocumentation : AbstractDocumentationProvider() {
+
     private val LOG = Logger.getInstance(CssVariableDocumentation::class.java)
     private val ENTRY_SEP = "|||"
+
+    /*──────────────────────── main entry ────────────────────────*/
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
             val varName = extractVariableName(element) ?: return null
+            val scope = GlobalSearchScope.projectScope(element.project)
 
-            val allEntries = FileBasedIndex.getInstance()
-                .getValues(CssVariableIndex.NAME, varName, GlobalSearchScope.projectScope(element.project))
-                .flatMap { it.split(ENTRY_SEP) }
-                .filter { it.isNotBlank() }
+            // raw database entries -> List( context␟value␟comment )
+            val rawEntries = FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, varName, scope)
+                .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
 
-            if (allEntries.isEmpty()) return null
+            if (rawEntries.isEmpty()) return null
 
-            val valueEntries = allEntries.mapNotNull {
-                val parts = it.split(DELIMITER, limit = 3)
-                if (parts.size >= 2) Triple(parts[0], parts[1], parts.getOrElse(2) { "" })
-                else null
+            // parse + resolve aliases
+            val parsed: List<Triple<String, String, String>> = rawEntries.mapNotNull {
+                val p = it.split(DELIMITER, limit = 3)
+                if (p.size >= 2) {
+                    val ctx = p[0]
+                    val value = resolveVarValue(p[1], scope)
+                    val comment = p.getOrElse(2) { "" }
+                    Triple(ctx, value, comment)
+                } else null
             }
 
+            // collapse identical (context, value) rows
+            val unique = parsed.distinctBy { it.first to it.second }
+
+            // sort according to rank()
             val settings = CssVarsAssistantSettings.getInstance()
-            val sortedEntries = if (settings.showContextValues) {
-                valueEntries.sortedWith(compareBy({ it.first != "default" }, { it.first }))
-            } else {
-                valueEntries.filter { it.first == "default" }.ifEmpty { valueEntries.take(1) }
-            }
+            val sorted = unique.sortedWith(
+                compareBy(
+                    { rank(it.first).first },                  // gruppe 0‑5
+                    { rank(it.first).second ?: Int.MAX_VALUE}, // tall‑hint (null ⇒ sist)
+                    { rank(it.first).third }                   // alfabetisk fallback
+                )
+            )
 
-            val docEntry = valueEntries.firstOrNull { it.third.isNotBlank() }
-                ?: valueEntries.find { it.first == "default" }
-                ?: valueEntries.first()
+
+            // pick entry with doc comments (if any)
+            val docEntry =
+                unique.firstOrNull { it.third.isNotBlank() } ?: unique.find { it.first == "default" } ?: unique.first()
             val doc = DocParser.parse(docEntry.third, docEntry.second)
 
+            /*────────── HTML build ──────────*/
             val sb = StringBuilder()
-            sb.append("<html><body>")
-            sb.append(DocumentationMarkup.DEFINITION_START)
-            if (doc.name.isNotBlank()) {
-                sb.append("<b>").append(doc.name).append("</b><br/>")
-            }
-            sb.append("<small>CSS Variable: <code>").append(varName).append("</code></small>")
-            sb.append(DocumentationMarkup.DEFINITION_END)
-            sb.append(DocumentationMarkup.CONTENT_START)
+            sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
+            if (doc.name.isNotBlank()) sb.append("<b>").append(doc.name).append("</b><br/>")
+            sb.append("<small>CSS Variable: <code>$varName</code></small>").append(DocumentationMarkup.DEFINITION_END)
+                .append(DocumentationMarkup.CONTENT_START)
 
-            if (settings.showContextValues && sortedEntries.size > 1) {
-                sb.append("<p><b>Values:</b></p>")
-                sb.append("<table>")
-                // Put a non-breaking space in the color swatch header
-                sb.append("<tr><th style='text-align:left; vertical-align:middle;'>Context</th><th style='text-align:left; vertical-align:middle;'>&nbsp;</th><th style='text-align:left; vertical-align:middle;'>Value</th></tr>")
-                for ((context, value, _) in sortedEntries) {
-                    val isColor = ColorParser.parseCssColor(value) != null
-                    sb.append("<tr>")
-                    sb.append("<td style='padding-right:10px;color:#888;'>")
-                    sb.append(contextLabel(context)).append("</td>")
-                    sb.append("<td style='padding-right:4px;vertical-align:middle;'>")
-                    if (isColor) {
-                        sb.append(colorSwatchHtml(value))
-                    } else {
-                        sb.append("&nbsp;")
-                    }
-                    sb.append("</td>")
-                    sb.append("<td style='vertical-align:middle;'>")
-                    sb.append(StringUtil.escapeXmlEntities(value)).append("</td>")
-                    sb.append("</tr>")
+            if (settings.showContextValues && sorted.size > 1) {
+                sb.append("<p><b>Values:</b></p><table>").append("<tr><th align='left'>Context</th>")
+                    .append("<th style='width:14px'></th>").append("<th align='left'>Value</th></tr>")
+                for ((ctx, value, _) in sorted) {
+                    val isColour = ColorParser.parseCssColor(value) != null
+                    sb.append("<tr><td style='color:#888;padding-right:10px'>").append(contextLabel(ctx))
+                        .append("</td><td>")
+                    if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
+                    sb.append("</td><td>").append(StringUtil.escapeXmlEntities(value)).append("</td></tr>")
                 }
                 sb.append("</table>")
             } else {
-                sb.append("<p><b>Value:</b></p><br/>")
-                sb.append("<code>")
-                sb.append(StringUtil.escapeXmlEntities(sortedEntries.first().second)).append("</code>")
+                sb.append("<p><b>Value:</b></p><code>").append(StringUtil.escapeXmlEntities(sorted.first().second))
+                    .append("</code>")
             }
 
-            if (doc.description.isNotBlank()) {
-                sb.append("<p><b>Description:</b><br/>")
-                    .append(StringUtil.escapeXmlEntities(doc.description))
-                    .append("</p>")
-            }
+            if (doc.description.isNotBlank()) sb.append("<p><b>Description:</b><br/>")
+                .append(StringUtil.escapeXmlEntities(doc.description)).append("</p>")
+
             if (doc.examples.isNotEmpty()) {
                 sb.append("<p><b>Examples:</b></p><pre>")
-                doc.examples.forEach {
-                    sb.append(StringUtil.escapeXmlEntities(it)).append("\n")
-                }
+                doc.examples.forEach { sb.append(StringUtil.escapeXmlEntities(it)).append('\n') }
                 sb.append("</pre>")
             }
 
-            sb.append("<p style='margin-top:10px'>")
-            // WebAIM link for color variables
-            val colorValue = sortedEntries
-                .map { it.second }
-                .firstNotNullOfOrNull { ColorParser.parseCssColor(it) }
-            if (colorValue != null) {
-                val hex = "%02x%02x%02x".format(colorValue.red, colorValue.green, colorValue.blue)
-                val bg = "000000"
-                sb.append(
-                    """
-                    <a href="https://webaim.org/resources/contrastchecker/?fcolor=$hex&bcolor=$bg" target="_blank" style="text-decoration:underline;">
-                        Check contrast on WebAIM Contrast Checker
-                    </a>
-                    """.trimIndent()
-                )
-            }
-            sb.append("</p>")
-            sb.append(DocumentationMarkup.CONTENT_END)
-            sb.append("</body></html>")
+            // WebAIM link for first colour value
+            sorted.mapNotNull { ColorParser.parseCssColor(it.second) }.firstOrNull()?.let { c ->
+                    val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
+                    sb.append(
+                        """<p style='margin-top:10px'>
+                             |<a target="_blank"
+                             |   href="https://webaim.org/resources/contrastchecker/?fcolor=$hex&bcolor=000000">
+                             |Check contrast on WebAIM Contrast Checker
+                             |</a></p>""".trimMargin()
+                    )
+                }
+
+            sb.append(DocumentationMarkup.CONTENT_END).append("</body></html>")
+
             return sb.toString()
         } catch (e: Exception) {
             LOG.error("Error generating documentation", e)
@@ -122,31 +121,72 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         }
     }
 
-    private fun contextLabel(context: String): String {
-        return when {
-            context == "default" -> "Default"
-            "dark" in context.lowercase() -> "Dark"
-            Regex("""max-width:\s*(\d+)""").find(context)?.groupValues?.getOrNull(1) != null ->
-                "≤${Regex("""max-width:\s*(\d+)""").find(context)?.groupValues?.get(1)}px"
-            Regex("""min-width:\s*(\d+)""").find(context)?.groupValues?.getOrNull(1) != null ->
-                "≥${Regex("""min-width:\s*(\d+)""").find(context)?.groupValues?.get(1)}px"
-            else -> context
-        }
+    /*──────────────────── helper functions ────────────────────*/
+
+    /** Resolve a var(--alias) chain to its literal value (max 5 hops). */
+    private fun resolveVarValue(
+        raw: String, scope: GlobalSearchScope, visited: Set<String> = emptySet(), depth: Int = 0
+    ): String {
+        if (depth > 5) return raw
+        val m = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw) ?: return raw
+        val ref = m.groupValues[1]
+        if (ref in visited) return raw                          // cyclic guard
+
+        val entries =
+            FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, ref, scope).flatMap { it.split(ENTRY_SEP) }
+                .filter { it.isNotBlank() }
+
+        val defValue = entries.mapNotNull {
+                val p = it.split(DELIMITER, limit = 3)
+                if (p.size >= 2) p[0] to p[1] else null
+            }.let { pairs ->
+                pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
+            } ?: return raw
+
+        return resolveVarValue(defValue, scope, visited + ref, depth + 1)
     }
 
-    private fun extractVariableName(element: PsiElement): String? {
-        val txt = element.text.trim()
-        if (txt.startsWith("--")) return txt
-        return element.parent?.text
-            ?.let { Regex("var\\((--[\\w-]+)\\)").find(it)?.groupValues?.get(1) }
+    private fun contextLabel(ctx: String): String = when {
+        ctx == "default" -> "Default"
+        "prefers-color-scheme" in ctx.lowercase() && "light" in ctx.lowercase() -> "Light"
+        "prefers-color-scheme" in ctx.lowercase() && "dark" in ctx.lowercase() -> "Dark"
+        Regex("""max-width:\s*(\d+)""").find(ctx) != null -> "≤${Regex("""max-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
+
+        Regex("""min-width:\s*(\d+)""").find(ctx) != null -> "≥${Regex("""min-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
+
+        else -> ctx
     }
 
-    private fun colorSwatchHtml(color: String): String {
-        // Try to parse to a Color object
-        val awtColor = ColorParser.parseCssColor(color) ?: return "&nbsp;" // Only show swatch if it's a color
-        // Convert to #RRGGBB
-        val hex = "#%02x%02x%02x".format(awtColor.red, awtColor.green, awtColor.blue)
-        // Use the original value as label
+    private fun extractVariableName(el: PsiElement): String? = el.text.trim().takeIf { it.startsWith("--") }
+        ?: el.parent?.text?.let { Regex("""var\(\s*(--[\w-]+)\s*\)""").find(it)?.groupValues?.get(1) }
+
+    private fun colorSwatchHtml(cssValue: String): String {
+        val c = ColorParser.parseCssColor(cssValue) ?: return "&nbsp;"
+        val hex = "#%02x%02x%02x".format(c.red, c.green, c.blue)
         return """<font color="$hex">&#9632;</font>"""
+    }
+
+    /**
+     * Assign an ordering tuple (group, numericHint, ctx) used for sorting rows:
+     * 0 = Default / Light, 1 = Dark, 2 = max‑width (‑largest → ‑smallest),
+     * 3 = min‑width (smallest → largest), 4 = other media, 5 = rest alpha.
+     */
+    private fun rank(ctx: String): Triple<Int, Int?, String> {
+        val c = ctx.lowercase()
+
+        if (c == "default" || ("prefers-color-scheme" in c && "light" in c)) return Triple(0, null, c)
+
+        if ("prefers-color-scheme" in c && "dark" in c) return Triple(1, null, c)
+
+        Regex("""max-width:\s*(\d+)(px|rem|em)?""").find(c)?.let {
+            return Triple(2, -it.groupValues[1].toInt(), c)
+        }
+        Regex("""min-width:\s*(\d+)(px|rem|em)?""").find(c)?.let {
+            return Triple(3, it.groupValues[1].toInt(), c)
+        }
+
+        if (arrayOf("hover", "motion", "orientation", "print").any { it in c }) return Triple(4, null, c)
+
+        return Triple(5, null, c)
     }
 }

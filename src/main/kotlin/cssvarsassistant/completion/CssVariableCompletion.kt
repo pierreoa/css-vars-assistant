@@ -24,6 +24,7 @@ class CssVariableCompletion : CompletionContributor() {
     private val LOG = Logger.getInstance(CssVariableCompletion::class.java)
     private val ENTRY_SEP = "|||"
 
+
     init {
         extend(
             CompletionType.BASIC,
@@ -51,6 +52,37 @@ class CssVariableCompletion : CompletionContributor() {
                         val scope = GlobalSearchScope.projectScope(project)
                         val settings = CssVarsAssistantSettings.getInstance()
 
+
+                        fun resolveVarValue(raw: String, visited: Set<String> = emptySet()): String {
+                            val m = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
+                            return if (m != null) {
+                                val ref = m.groupValues[1]
+                                if (ref in visited) raw
+                                else {
+                                    // fetch all entries for ref
+                                    val refEntries = FileBasedIndex.getInstance()
+                                        .getValues(CssVariableIndex.NAME, ref, scope)
+                                        .flatMap { it.split(ENTRY_SEP) }
+                                        .distinct()
+                                        .filter { it.isNotBlank() }
+                                    // find default or first
+                                    val refDefault = refEntries
+                                        .mapNotNull {
+                                            val p = it.split(DELIMITER, limit = 3)
+                                            if (p.size >= 2) p[0] to p[1] else null
+                                        }
+                                        .let { pairs ->
+                                            pairs.find { it.first == "default" }?.second
+                                                ?: pairs.firstOrNull()?.second
+                                        }
+                                    if (refDefault != null)
+                                        resolveVarValue(refDefault, visited + ref)
+                                    else
+                                        raw
+                                }
+                            } else raw
+                        }
+
                         data class Entry(
                             val rawName: String,
                             val display: String,
@@ -70,18 +102,32 @@ class CssVariableCompletion : CompletionContributor() {
                                 val allVals = FileBasedIndex.getInstance()
                                     .getValues(CssVariableIndex.NAME, rawName, scope)
                                     .flatMap { it.split(ENTRY_SEP) }
+                                    .distinct()
                                     .filter { it.isNotBlank() }
+
 
                                 if (allVals.isEmpty()) return@forEach
 
                                 // List of context-value pairs
                                 val valuePairs = allVals.mapNotNull {
                                     val parts = it.split(DELIMITER, limit = 3)
-                                    if (parts.size >= 2) parts[0] to parts[1] else null
+                                    if (parts.size >= 2) {
+                                        val ctx = parts[0]
+                                        val rawVal = parts[1]
+                                        val resolved = resolveVarValue(rawVal)
+                                        ctx to resolved
+                                    } else null
                                 }
-                                val values = valuePairs.map { it.second }.distinct()
-                                val mainValue = valuePairs.find { it.first == "default" }?.second
-                                    ?: valuePairs.first().second
+
+                                // ─── DEDUPE ─────────────────────────────────────────────────────
+                                // if the same var is declared twice in the same context with the same value,
+                                // collapse it down to a single entry here:
+                                val uniqueValuePairs: List<Pair<String, String>> =
+                                    valuePairs.distinctBy { (ctx, v) -> ctx to v }
+                                val values = uniqueValuePairs.map { it.second }.distinct()
+                                val mainValue = uniqueValuePairs.find { it.first == "default" }?.second
+                                    ?: values.first()
+
 
                                 // Doc comment from any doc-comment entry, fallback to default, fallback to first
                                 val docEntry = allVals.firstOrNull { it.substringAfter(DELIMITER).isNotBlank() }
@@ -90,10 +136,16 @@ class CssVariableCompletion : CompletionContributor() {
                                 val doc = DocParser.parse(commentTxt, mainValue).description
 
                                 // Only true if ALL values parse as color
-                                val isAllColor = values.isNotEmpty() && values.all { ColorParser.parseCssColor(it) != null }
+                                val isAllColor =
+                                    values.isNotEmpty() && values.all { ColorParser.parseCssColor(it) != null }
 
                                 entries += Entry(
-                                    rawName, display, mainValue, valuePairs, doc, isAllColor
+                                    rawName,
+                                    display,
+                                    mainValue,
+                                    uniqueValuePairs,   // ← using the deduped list
+                                    doc,
+                                    isAllColor
                                 )
                             }
 
@@ -133,6 +185,7 @@ class CssVariableCompletion : CompletionContributor() {
                                 e.allValues.size > 1 && settings.showContextValues -> {
                                     "${e.mainValue} (+${e.allValues.size - 1})"
                                 }
+
                                 else -> e.mainValue
                             }
 

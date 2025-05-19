@@ -1,6 +1,6 @@
 # CSS Variables Assistant
 
-**Version**: 1.0.2
+**Version**: 1.1.0
 **IDE**: WebStorm, IntelliJ 2025.1+  
 **Author**: Stian Larsen ([GitHub](https://github.com/stianlars1/css-vars-assistant))
 

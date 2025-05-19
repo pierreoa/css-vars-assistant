@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.0.2"
+version = "1.1.0"
 
 
 
@@ -65,45 +65,28 @@ intellijPlatform {
         }
 
         changeNotes = """
-    <h2>1.0.2 – 2025‑05‑19</h2>
+    <h2>1.1.0 – 2025‑05‑19</h2>
+
     <h3>Added</h3>
     <ul>
-      <li><b>Settings page:</b> Plugin is now user-configurable (toggle context-based variable values).</li>
-      <li><b>Smarter completions:</b>
-        <ul>
-          <li>Dual color swatch if a variable has both light and dark color values.</li>
-          <li>All original value syntaxes shown (e.g., <code>#fff</code>, <code>hsl(0 0% 100%)</code>, <code>rgb(...)</code>).</li>
-          <li>Context-aware completions: e.g. “🌙” for dark mode, no overlays.</li>
-        </ul>
-      </li>
-      <li><b>Color swatches:</b>
-        <ul>
-          <li>Now supports <b>shadcn/ui</b> color variable format, <code>--foreground: 0 0% 100%;</code> and usage like <code>hsl(var(--foreground))</code>.</li>
-        </ul>
-      </li>
-      <li><b>Robust comment parsing:</b> All major CSS comment styles now supported for variable docs (JSDoc, plain, single-line, multiline).</li>
-      <li><b>Context tracking:</b> Indexer now properly tracks context (media queries, dark/light, nested queries, etc).</li>
-      <li><b>Documentation enhancements:</b>
-        <ul>
-          <li>Multi-context variables shown as a table.</li>
-          <li>Color swatches always use original value syntax.</li>
-          <li>WebAIM contrast checker link for color variables.</li>
-        </ul>
-      </li>
+      <li><b>Alias resolution:</b> completions &amp; docs now resolve <code>var(--alias)</code> chains to show the literal value.</li>
+      <li><b>Duplicate squashing:</b> identical context + value pairs collapse into a single row.</li>
+      <li><b>Smart documentation order:</b> rows are now Default / Light → Dark → desktop‑first break‑points → mobile‑first → other media.</li>
+      <li><b>Light as primary:</b> <code>prefers-color-scheme: light</code> is treated the same as <code>default</code>.</li>
+      <li><b>Stricter index filter:</b> non‑stylesheet files (e.g. <code>.txt</code>, templates) are ignored.</li>
     </ul>
+
     <h3>Changed</h3>
     <ul>
-      <li><b>Consistent UI:</b>
-        <ul>
-          <li>No overlay/context icons on completion swatch—context info is right-aligned only.</li>
-          <li>Completions/docs now fully respect user settings.</li>
-        </ul>
-      </li>
+      <li><b>Completion row:</b> always lists context values (no more “(+N)” placeholders) and follows the new smart order.</li>
+      <li><b>Colour chips:</b> dual‑swatch also shown when light/dark values alias to the same colour.</li>
     </ul>
+
     <h3>Fixed</h3>
     <ul>
-      <li><b>Comment parsing bugs:</b> One-line, multi-line, and mixed-format doc-comments now always recognized.</li>
-      <li><b>Threading issues:</b> Docs and completions no longer trigger read-access warnings.</li>
+      <li>No more duplicate “Default” rows when a variable is declared multiple times with the same value.</li>
+      <li>Documentation no longer displays raw <code>var(--xyz)</code> strings when they can be resolved.</li>
+      <li>Colour swatch detection &amp; WebAIM links work for resolved alias values.</li>
     </ul>
 """.trimIndent()
 
