@@ -12,7 +12,9 @@ import com.intellij.openapi.components.Storage
 @Service
 class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettings.State> {
     data class State(
-        var showContextValues: Boolean = true
+        var showContextValues: Boolean = true,
+        var useGlobalSearchScope: Boolean = false,
+        var allowIdeCompletions: Boolean = true
     )
 
     private var state = State()
@@ -25,6 +27,14 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
     var showContextValues: Boolean
         get() = state.showContextValues
         set(value) { state.showContextValues = value }
+
+    var useGlobalSearchScope: Boolean
+        get() = state.useGlobalSearchScope
+        set(value) { state.useGlobalSearchScope = value }
+
+    var allowIdeCompletions: Boolean
+        get() = state.allowIdeCompletions
+        set(value) { state.allowIdeCompletions = value }
 
     companion object {
         @JvmStatic

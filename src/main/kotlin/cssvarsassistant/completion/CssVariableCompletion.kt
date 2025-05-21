@@ -49,9 +49,19 @@ class CssVariableCompletion : CompletionContributor() {
                         val rawPref = result.prefixMatcher.prefix
                         val simple = rawPref.removePrefix("--")
                         val project = pos.project
-                        val scope = GlobalSearchScope.projectScope(project)
+
+                        // Get settings
                         val settings = CssVarsAssistantSettings.getInstance()
 
+                        // Choose scope based on settings
+                        val scope = if (settings.useGlobalSearchScope) {
+                            GlobalSearchScope.allScope(project)
+                        } else {
+                            GlobalSearchScope.projectScope(project)
+                        }
+
+                        // Track which variables we've processed to avoid duplicates
+                        val processedVariables = mutableSetOf<String>()
 
                         fun resolveVarValue(raw: String, visited: Set<String> = emptySet()): String {
                             val m = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
@@ -98,6 +108,9 @@ class CssVariableCompletion : CompletionContributor() {
                             .forEach { rawName ->
                                 val display = rawName.removePrefix("--")
                                 if (!display.startsWith(simple, ignoreCase = true)) return@forEach
+
+                                // Add this variable name to our processed set
+                                processedVariables.add(rawName)
 
                                 val allVals = FileBasedIndex.getInstance()
                                     .getValues(CssVariableIndex.NAME, rawName, scope)
@@ -151,6 +164,7 @@ class CssVariableCompletion : CompletionContributor() {
 
                         entries.sortBy { it.display }
 
+                        // Create our enhanced lookup elements
                         for (e in entries) {
                             val short = e.doc.takeIf { it.isNotBlank() }
                                 ?.let { it.take(40) + if (it.length > 40) "…" else "" }
@@ -199,10 +213,34 @@ class CssVariableCompletion : CompletionContributor() {
                                 .withInsertHandler { ctx2, _ ->
                                     ctx2.document.replaceString(ctx2.startOffset, ctx2.tailOffset, e.rawName)
                                 }
+                            // Priority / order is important for the completion list, and is declared in plugin.xml
 
                             result.addElement(elt)
                         }
-                        result.stopHere()
+
+                        // Handle IDE completions based on settings
+                        if (settings.allowIdeCompletions) {
+                            // Only stop the completion chain for variables we've processed
+                            if (processedVariables.isNotEmpty()) {
+                                // Create a filtered result set that only stops completion for our processed variables
+                                val filteredResult = result.withPrefixMatcher(object : PrefixMatcher(rawPref) {
+                                    override fun prefixMatches(name: String): Boolean {
+                                        // Only claim matches for variables we've processed
+                                        return processedVariables.contains(name)
+                                    }
+
+                                    override fun cloneWithPrefix(prefix: String): PrefixMatcher {
+                                        return this
+                                    }
+                                })
+
+                                // Stop further processing only for our variables
+                                filteredResult.stopHere()
+                            }
+                        } else {
+                            // If IDE completions are disabled, stop the chain completely
+                            result.stopHere()
+                        }
                     } catch (ex: Exception) {
                         LOG.error("CSS var completion error", ex)
                     }
@@ -211,7 +249,7 @@ class CssVariableCompletion : CompletionContributor() {
         )
     }
 
-    /** Detect simple “size” constants (px, rem, em, %…) */
+    /** Detect simple "size" constants (px, rem, em, %…) */
     private fun isSizeValue(raw: String): Boolean {
         return Regex("""^-?\d+(\.\d+)?(px|em|rem|ch|ex|vh|vw|vmin|vmax|%)$""", RegexOption.IGNORE_CASE)
             .matches(raw.trim())
