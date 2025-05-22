@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.1.0"
+version = "1.2.0"
 
 
 
@@ -47,7 +47,8 @@ intellijPlatform {
               <li><b>Smart Autocomplete</b> inside <code>var(--…)</code></li>
               <li><b>Quick Documentation</b> (Ctrl+Q) showing value, description & color swatch</li>
               <li><b>JSDoc‑style</b> comment support (<code>@name</code>, <code>@description</code>, <code>@example</code>)</li>
-              <li><b>Sorted suggestions</b> by value (largest first)</li>
+              <li><b>Advanced @import resolution</b> with configurable scope and depth</li>
+              <li><b>Multi-preprocessor support</b> (CSS, SCSS, SASS, LESS)</li>
             </ul>
             <p>
               Works in CSS, SCSS, SASS, LESS, JavaScript/TypeScript, and JSX/TSX files.
@@ -65,28 +66,32 @@ intellijPlatform {
         }
 
         changeNotes = """
-    <h2>1.1.0 – 2025‑05‑19</h2>
+    <h2>1.2.0 – 2025‑05‑22</h2>
 
     <h3>Added</h3>
     <ul>
-      <li><b>Alias resolution:</b> completions &amp; docs now resolve <code>var(--alias)</code> chains to show the literal value.</li>
-      <li><b>Duplicate squashing:</b> identical context + value pairs collapse into a single row.</li>
-      <li><b>Smart documentation order:</b> rows are now Default / Light → Dark → desktop‑first break‑points → mobile‑first → other media.</li>
-      <li><b>Light as primary:</b> <code>prefers-color-scheme: light</code> is treated the same as <code>default</code>.</li>
-      <li><b>Stricter index filter:</b> non‑stylesheet files (e.g. <code>.txt</code>, templates) are ignored.</li>
+      <li><b>Advanced @import resolution:</b> intelligent resolution of <code>@import</code> statements across CSS, SCSS, SASS, and LESS files.</li>
+      <li><b>Smart node_modules handling:</b> properly resolves scoped packages like <code>@company/package/path</code>.</li>
+      <li><b>Configurable indexing scope:</b> choose between project‑only, project + imports, or full global indexing.</li>
+      <li><b>Import depth control:</b> configurable maximum depth for <code>@import</code> chains to prevent infinite recursion.</li>
+      <li><b>Enhanced settings panel:</b> fine‑tune plugin behavior with expanded configuration options.</li>
+      <li><b>Debug tools:</b> new "Debug CSS Import Resolution" action for troubleshooting import chains.</li>
     </ul>
 
-    <h3>Changed</h3>
+    <h3>Improved</h3>
     <ul>
-      <li><b>Completion row:</b> always lists context values (no more “(+N)” placeholders) and follows the new smart order.</li>
-      <li><b>Colour chips:</b> dual‑swatch also shown when light/dark values alias to the same colour.</li>
+      <li><b>Multi‑extension support:</b> automatically tries <code>.css</code>, <code>.scss</code>, <code>.sass</code>, <code>.less</code> extensions when resolving imports.</li>
+      <li><b>Relative path resolution:</b> better handling of <code>./</code> and <code>../</code> import paths.</li>
+      <li><b>Performance optimizations:</b> smarter file filtering and caching for faster completion suggestions.</li>
+      <li><b>Error handling:</b> improved stability when processing malformed import statements.</li>
     </ul>
 
     <h3>Fixed</h3>
     <ul>
-      <li>No more duplicate “Default” rows when a variable is declared multiple times with the same value.</li>
-      <li>Documentation no longer displays raw <code>var(--xyz)</code> strings when they can be resolved.</li>
-      <li>Colour swatch detection &amp; WebAIM links work for resolved alias values.</li>
+      <li>Import resolution now correctly distinguishes between relative paths and node_modules packages.</li>
+      <li>Deprecated API usage replaced with modern IntelliJ Platform APIs.</li>
+      <li>Better handling of circular import dependencies.</li>
+      <li>Improved compatibility with latest WebStorm/IntelliJ versions.</li>
     </ul>
 """.trimIndent()
 

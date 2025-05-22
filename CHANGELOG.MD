@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] – 2025‑05‑22
+### Added
+* **Advanced** `@import` resolution: intelligent resolution of `@import` statements across `CSS`, `SCSS`, `SASS`, and `LESS` files.
+* **Smart** node_modules handling: properly resolves scoped packages like @company/package/path.
+* **Configurable** indexing scope: choose between `project‑only`, `project + imports`, or `full global` indexing via Settings.
+* **Import depth control:** configurable **maximum depth** for `@import` chains to **prevent** infinite recursion.
+* **Enhanced settings panel:** fine‑tune plugin behavior with expanded configuration options under `Settings → Tools → CSS Variables Assistant`.
+
+### Improved
+* **Multi‑extension support:** automatically tries `.css`, `.scss`, `.sass`, `.less` extensions when resolving imports without explicit extensions.
+* **Relative path resolution:** better handling of `./` and `../` import paths with proper extension priority based on importing file type.
+* **Performance optimizations:** smarter file filtering and caching for **faster completion** suggestions in large projects.
+* __Error handling:__ improved stability when processing malformed import statements or missing files.
+
+### Fixed
+* Import resolution now correctly distinguishes between relative paths and node_modules packages.
+* Deprecated API usage replaced with modern IntelliJ Platform APIs.
+* Better handling of circular import dependencies with visited file tracking.
+* Improved compatibility with latest WebStorm/IntelliJ versions.
+
 ## [1.1.0] – 2025‑05‑19
 ### Added
 - **Alias resolution:** `--alias: var(--real);` now resolves to the literal value in completion & docs.
