@@ -3,8 +3,11 @@ package cssvarsassistant.documentation
 import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.index.CssVariableIndex
@@ -12,63 +15,52 @@ import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 
-
-/**
- * Quick‑doc / hover popup for CSS custom properties.
- * – Resolves alias chains  var(--x) → literal value
- * – Deduplicates identical (context,value) pairs
- * – Smart sorts: Default/Light → Dark → max‑width (large→small) →
- *   min‑width (small→large) → other media queries → alphabetical rest
- */
 class CssVariableDocumentation : AbstractDocumentationProvider() {
 
     private val LOG = Logger.getInstance(CssVariableDocumentation::class.java)
     private val ENTRY_SEP = "|||"
-
-    /*──────────────────────── main entry ────────────────────────*/
+    private val LESS_VAR_PATTERN = Regex("""^@([\w-]+)$""")
+    private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
             val varName = extractVariableName(element) ?: return null
-            val scope = GlobalSearchScope.projectScope(element.project)
+            val settings = CssVarsAssistantSettings.getInstance()
+            val project = element.project
+            val scope = when (settings.indexingScope) {
+                CssVarsAssistantSettings.IndexingScope.GLOBAL -> GlobalSearchScope.allScope(project)
+                else -> GlobalSearchScope.projectScope(project)
+            }
 
-            // raw database entries -> List( context␟value␟comment )
             val rawEntries = FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, varName, scope)
                 .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
 
             if (rawEntries.isEmpty()) return null
 
-            // parse + resolve aliases
             val parsed: List<Triple<String, String, String>> = rawEntries.mapNotNull {
                 val p = it.split(DELIMITER, limit = 3)
                 if (p.size >= 2) {
                     val ctx = p[0]
-                    val value = resolveVarValue(p[1], scope)
+                    val value = resolveVarValue(project, p[1], scope)
                     val comment = p.getOrElse(2) { "" }
                     Triple(ctx, value, comment)
                 } else null
             }
 
-            // collapse identical (context, value) rows
             val unique = parsed.distinctBy { it.first to it.second }
 
-            // sort according to rank()
-            val settings = CssVarsAssistantSettings.getInstance()
             val sorted = unique.sortedWith(
                 compareBy(
-                    { rank(it.first).first },                  // gruppe 0‑5
-                    { rank(it.first).second ?: Int.MAX_VALUE }, // tall‑hint (null ⇒ sist)
-                    { rank(it.first).third }                   // alfabetisk fallback
+                    { rank(it.first).first },
+                    { rank(it.first).second ?: Int.MAX_VALUE },
+                    { rank(it.first).third }
                 )
             )
 
-
-            // pick entry with doc comments (if any)
             val docEntry =
                 unique.firstOrNull { it.third.isNotBlank() } ?: unique.find { it.first == "default" } ?: unique.first()
             val doc = DocParser.parse(docEntry.third, docEntry.second)
 
-            /*────────── HTML build ──────────*/
             val sb = StringBuilder()
             sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
             if (doc.name.isNotBlank()) sb.append("<b>").append(doc.name).append("</b><br/>")
@@ -102,7 +94,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 sb.append("</pre>")
             }
 
-            // WebAIM link for first colour value
             sorted.mapNotNull { ColorParser.parseCssColor(it.second) }.firstOrNull()?.let { c ->
                 val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
                 sb.append(
@@ -123,29 +114,92 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         }
     }
 
-    /*──────────────────── helper functions ────────────────────*/
-
-    /** Resolve a var(--alias) chain to its literal value (max 5 hops). */
     private fun resolveVarValue(
-        raw: String, scope: GlobalSearchScope, visited: Set<String> = emptySet(), depth: Int = 0
+        project: Project,
+        raw: String,
+        scope: GlobalSearchScope,
+        visited: Set<String> = emptySet(),
+        depth: Int = 0
     ): String {
         if (depth > 5) return raw
-        val m = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw) ?: return raw
-        val ref = m.groupValues[1]
-        if (ref in visited) return raw                          // cyclic guard
 
-        val entries =
-            FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, ref, scope).flatMap { it.split(ENTRY_SEP) }
-                .filter { it.isNotBlank() }
+        val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
+        if (varRef != null) {
+            val ref = varRef.groupValues[1]
+            if (ref in visited) return raw
 
-        val defValue = entries.mapNotNull {
-            val p = it.split(DELIMITER, limit = 3)
-            if (p.size >= 2) p[0] to p[1] else null
-        }.let { pairs ->
-            pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
-        } ?: return raw
+            val entries =
+                FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, ref, scope).flatMap { it.split(ENTRY_SEP) }
+                    .filter { it.isNotBlank() }
 
-        return resolveVarValue(defValue, scope, visited + ref, depth + 1)
+            val defValue = entries.mapNotNull {
+                val p = it.split(DELIMITER, limit = 3)
+                if (p.size >= 2) p[0] to p[1] else null
+            }.let { pairs ->
+                pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
+            } ?: return raw
+
+            return resolveVarValue(project, defValue, scope, visited + ref, depth + 1)
+        }
+
+        val lessVarMatch = LESS_VAR_PATTERN.find(raw.trim())
+        if (lessVarMatch != null) {
+            val varName = lessVarMatch.groupValues[1]
+            val cacheKey = Pair(project, varName)
+            lessVarCache[cacheKey]?.let { return it }
+
+            val resolvedValue = findPreprocessorVariableValue(project, varName, scope)
+            lessVarCache[cacheKey] = resolvedValue
+            return resolvedValue ?: raw
+        }
+
+        return raw
+    }
+
+    private fun findPreprocessorVariableValue(
+        project: Project,
+        varName: String,
+        scope: GlobalSearchScope
+    ): String? {
+        try {
+            val potentialFiles = mutableListOf<VirtualFile>()
+            val fileTypes = listOf(".less", ".scss", ".sass", ".css")
+
+            for (ext in fileTypes) {
+                for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
+                    FilenameIndex.getFilesByName(project, "$commonName$ext", scope, true)
+                        .forEach { potentialFiles.add(it.virtualFile) }
+                }
+            }
+
+            for (file in potentialFiles) {
+                try {
+                    val content = String(file.contentsToByteArray())
+
+                    val lessPattern = Regex("""@${Regex.escape(varName)}:\s*([^;]+);""")
+                    lessPattern.find(content)?.let {
+                        return it.groupValues[1].trim()
+                    }
+
+                    val scssPattern = Regex("""\\$${Regex.escape(varName)}:\s*([^;]+);""")
+                    scssPattern.find(content)?.let {
+                        return it.groupValues[1].trim()
+                    }
+
+                    val cssVarPattern = Regex("""--${Regex.escape(varName)}:\s*([^;]+);""")
+                    cssVarPattern.find(content)?.let {
+                        return it.groupValues[1].trim()
+                    }
+                } catch (e: Exception) {
+                    LOG.debug("Error reading file ${file.path}", e)
+                }
+            }
+
+            return null
+        } catch (e: Exception) {
+            LOG.error("Error finding preprocessor variable value", e)
+            return null
+        }
     }
 
     private fun contextLabel(ctx: String): String = when {
@@ -153,9 +207,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         "prefers-color-scheme" in ctx.lowercase() && "light" in ctx.lowercase() -> "Light"
         "prefers-color-scheme" in ctx.lowercase() && "dark" in ctx.lowercase() -> "Dark"
         Regex("""max-width:\s*(\d+)""").find(ctx) != null -> "≤${Regex("""max-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
-
         Regex("""min-width:\s*(\d+)""").find(ctx) != null -> "≥${Regex("""min-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
-
         else -> ctx
     }
 
@@ -168,11 +220,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         return """<font color="$hex">&#9632;</font>"""
     }
 
-    /**
-     * Assign an ordering tuple (group, numericHint, ctx) used for sorting rows:
-     * 0 = Default / Light, 1 = Dark, 2 = max‑width (‑largest → ‑smallest),
-     * 3 = min‑width (smallest → largest), 4 = other media, 5 = rest alpha.
-     */
     private fun rank(ctx: String): Triple<Int, Int?, String> {
         val c = ctx.lowercase()
 

@@ -1,3 +1,4 @@
+/*
 package cssvarsassistant.completion
 
 import com.intellij.codeInsight.completion.*
@@ -5,7 +6,6 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.css.CssFunction
 import com.intellij.psi.search.FilenameIndex
@@ -27,7 +27,9 @@ class CssVariableCompletion : CompletionContributor() {
     private val LOG = Logger.getInstance(CssVariableCompletion::class.java)
     private val ENTRY_SEP = "|||"
     private val LESS_VAR_PATTERN = Regex("""^@([\w-]+)$""")
-    private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
+
+    // Cache for preprocessor variables
+    private val preprocessorVarCache = mutableMapOf<Pair<Project, String>, String?>()
 
     init {
         extend(
@@ -54,9 +56,11 @@ class CssVariableCompletion : CompletionContributor() {
                         val project = pos.project
                         val settings = CssVarsAssistantSettings.getInstance()
 
-                        val scope = when (settings.indexingScope) {
-                            CssVarsAssistantSettings.IndexingScope.GLOBAL -> GlobalSearchScope.allScope(project)
-                            else -> GlobalSearchScope.projectScope(project)
+                        // Choose scope based on settings
+                        val scope = if (settings.useGlobalSearchScope) {
+                            GlobalSearchScope.allScope(project)
+                        } else {
+                            GlobalSearchScope.projectScope(project)
                         }
 
                         val processedVariables = mutableSetOf<String>()
@@ -92,15 +96,15 @@ class CssVariableCompletion : CompletionContributor() {
                                     return raw
                             }
 
-                            // Handle preprocessor variable references (LESS/SCSS)
+                            // Handle preprocessor variable references
                             val lessVarMatch = LESS_VAR_PATTERN.find(raw.trim())
                             if (lessVarMatch != null) {
                                 val varName = lessVarMatch.groupValues[1]
                                 val cacheKey = Pair(project, varName)
-                                lessVarCache[cacheKey]?.let { return it }
+                                preprocessorVarCache[cacheKey]?.let { return it }
 
                                 val resolvedValue = findPreprocessorVariableValue(project, varName, scope)
-                                lessVarCache[cacheKey] = resolvedValue
+                                preprocessorVarCache[cacheKey] = resolvedValue
                                 return resolvedValue ?: raw
                             }
 
@@ -143,8 +147,7 @@ class CssVariableCompletion : CompletionContributor() {
                                     } else null
                                 }
 
-                                val uniqueValuePairs: List<Pair<String, String>> =
-                                    valuePairs.distinctBy { (ctx, v) -> ctx to v }
+                                val uniqueValuePairs = valuePairs.distinctBy { (ctx, v) -> ctx to v }
                                 val values = uniqueValuePairs.map { it.second }.distinct()
                                 val mainValue = uniqueValuePairs.find { it.first == "default" }?.second
                                     ?: values.first()
@@ -194,10 +197,12 @@ class CssVariableCompletion : CompletionContributor() {
                                         }
                                     }
                                 }
+
                                 e.isAllColor -> e.mainValue
                                 e.allValues.size > 1 && settings.showContextValues -> {
                                     "${e.mainValue} (+${e.allValues.size - 1})"
                                 }
+
                                 else -> e.mainValue
                             }
 
@@ -215,6 +220,7 @@ class CssVariableCompletion : CompletionContributor() {
                             result.addElement(elt)
                         }
 
+                        // Handle IDE completions based on settings
                         if (settings.allowIdeCompletions) {
                             if (processedVariables.isNotEmpty()) {
                                 val filteredResult = result.withPrefixMatcher(object : PrefixMatcher(rawPref) {
@@ -245,13 +251,12 @@ class CssVariableCompletion : CompletionContributor() {
         scope: GlobalSearchScope
     ): String? {
         try {
-            val potentialFiles = mutableListOf<VirtualFile>()
-            val fileTypes = listOf(".less", ".scss", ".sass", ".css")
+            val potentialFiles = mutableListOf<com.intellij.openapi.vfs.VirtualFile>()
 
-            for (ext in fileTypes) {
-                for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
-                    FilenameIndex.getFilesByName(project, "$commonName$ext", scope, true)
-                        .forEach { potentialFiles.add(it.virtualFile) }
+            for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
+                for (ext in listOf(".less", ".scss", ".sass", ".css")) {
+                    FilenameIndex.getAllFilesByExt(project, "$commonName$ext", scope)
+                        .forEach { potentialFiles.add(it) }
                 }
             }
 
@@ -259,19 +264,15 @@ class CssVariableCompletion : CompletionContributor() {
                 try {
                     val content = String(file.contentsToByteArray())
 
-                    val lessPattern = Regex("""@${Regex.escape(varName)}:\s*([^;]+);""")
-                    lessPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val scssPattern = Regex("""\$${Regex.escape(varName)}:\s*([^;]+);""")
-                    scssPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val cssVarPattern = Regex("""--${Regex.escape(varName)}:\s*([^;]+);""")
-                    cssVarPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
+                    // Look for different preprocessor variable patterns
+                    listOf(
+                        Regex("""@${Regex.escape(varName)}:\s*([^;]+);"""), // LESS
+                        Regex("""\$${Regex.escape(varName)}:\s*([^;]+);"""), // SCSS
+                        Regex("""--${Regex.escape(varName)}:\s*([^;]+);""") // CSS
+                    ).forEach { pattern ->
+                        pattern.find(content)?.let {
+                            return it.groupValues[1].trim()
+                        }
                     }
                 } catch (e: Exception) {
                     LOG.debug("Error reading file ${file.path}", e)
@@ -281,7 +282,7 @@ class CssVariableCompletion : CompletionContributor() {
             return null
         } catch (e: Exception) {
             LOG.error("Error finding preprocessor variable value", e)
-            return null
+            throw (e)
         }
     }
 
@@ -298,4 +299,4 @@ class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
         icon1.paintIcon(c, g, x, y)
         icon2.paintIcon(c, g, x + icon1.iconWidth + 2, y)
     }
-}
+}*/

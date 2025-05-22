@@ -1,10 +1,14 @@
 package cssvarsassistant.index
 
+import com.intellij.openapi.fileTypes.FileTypeRegistry
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.indexing.*
 import com.intellij.util.io.DataExternalizer
 import com.intellij.util.io.EnumeratorStringDescriptor
 import com.intellij.util.io.IOUtil
 import com.intellij.util.io.KeyDescriptor
+import cssvarsassistant.settings.CssVarsAssistantSettings
 import java.io.DataInput
 import java.io.DataOutput
 
@@ -17,23 +21,107 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
     }
 
     override fun getName(): ID<String, String> = NAME
-    override fun getVersion(): Int = 3
+    override fun getVersion(): Int = 6  // Increment due to import resolution changes
 
-    override fun getInputFilter(): FileBasedIndex.InputFilter =
-        FileBasedIndex.InputFilter { virtualFile ->
-            // Accept only files that LOOK like style‑sheets
-            when (virtualFile.extension?.lowercase()) {
-                "css", "scss", "sass", "less" -> true                    // example extra types
-                else -> false                                       // ignore *.txt, *.md, …
-            }
+    override fun getInputFilter(): FileBasedIndex.InputFilter {
+        val registry = FileTypeRegistry.getInstance()
+        val cssFileType = registry.getFileTypeByExtension("css")
+        val scssFileType = registry.getFileTypeByExtension("scss")
+        val lessFileType = registry.getFileTypeByExtension("less")
+        val sassFileType = registry.getFileTypeByExtension("sass")
+
+        return FileBasedIndex.InputFilter { virtualFile ->
+            val fileType = virtualFile.fileType
+            val isStylesheetFile = fileType == cssFileType || fileType == scssFileType ||
+                    fileType == lessFileType || fileType == sassFileType
+
+            if (!isStylesheetFile) return@InputFilter false
+
+            // Get settings to determine if this file should be indexed
+            val settings = CssVarsAssistantSettings.getInstance()
+            shouldIndexFile(virtualFile, settings)
         }
+    }
 
     override fun dependsOnFileContent(): Boolean = true
 
     override fun getIndexer(): DataIndexer<String, String, FileContent> = DataIndexer { inputData ->
         val map = mutableMapOf<String, String>()
+        val settings = CssVarsAssistantSettings.getInstance()
 
-        val text = inputData.contentAsText
+        try {
+            // Index the current file
+            indexFileContent(inputData.contentAsText, map)
+
+            // If import resolution is enabled, also index imported files
+            if (settings.shouldResolveImports) {
+                indexImportedFiles(inputData.file, inputData.project, settings, map)
+            }
+        } catch (e: Exception) {
+            com.intellij.openapi.diagnostic.Logger.getInstance(CssVariableIndex::class.java)
+                .debug("Error indexing file ${inputData.file.path}", e)
+        }
+
+        map
+    }
+
+    /**
+     * Determines if a file should be indexed based on current settings
+     */
+    private fun shouldIndexFile(file: VirtualFile, settings: CssVarsAssistantSettings): Boolean {
+        return when (settings.indexingScope) {
+            CssVarsAssistantSettings.IndexingScope.GLOBAL -> true
+
+            CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY -> {
+                // Only index files within the project, not in node_modules
+                !file.path.contains("/node_modules/")
+            }
+
+            CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
+                // Index project files and selectively imported external files
+                // This is handled by the import resolution logic
+                !file.path.contains("/node_modules/")
+            }
+        }
+    }
+
+    /**
+     * Indexes imported files when import resolution is enabled
+     */
+    private fun indexImportedFiles(
+        file: VirtualFile,
+        project: Project?,
+        settings: CssVarsAssistantSettings,
+        map: MutableMap<String, String>
+    ) {
+        if (project == null) return
+
+        try {
+            val importedFiles = ImportResolver.resolveImports(
+                file,
+                project,
+                settings.maxImportDepth
+            )
+
+            for (importedFile in importedFiles) {
+                try {
+                    val importedContent = String(importedFile.contentsToByteArray())
+                    indexFileContent(importedContent, map)
+                } catch (e: Exception) {
+                    com.intellij.openapi.diagnostic.Logger.getInstance(CssVariableIndex::class.java)
+                        .debug("Error indexing imported file ${importedFile.path}", e)
+                }
+            }
+        } catch (e: Exception) {
+            com.intellij.openapi.diagnostic.Logger.getInstance(CssVariableIndex::class.java)
+                .debug("Error resolving imports for ${file.path}", e)
+        }
+    }
+
+    /**
+     * Indexes CSS variable declarations from file content
+     */
+    private fun indexFileContent(text: CharSequence, map: MutableMap<String, String>) {
         val lines = text.lines()
         var currentContext = "default"
         val contextStack = ArrayDeque<String>()
@@ -45,7 +133,7 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
         for (rawLine in lines) {
             val line = rawLine.trim()
 
-            // --- Media Query Context Handling ---
+            // Media Query Context Handling
             if (line.startsWith("@media")) {
                 val m = Regex("""@media\s*\(([^)]+)\)""").find(line)
                 val mediaLabel = m?.groupValues?.get(1)?.trim() ?: "media"
@@ -61,12 +149,10 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 continue
             }
 
-            // --- Comment Extraction ---
-            // Start of block comment
+            // Comment Extraction
             if (!inBlockComment && (line.startsWith("/*") || line.startsWith("/**"))) {
                 inBlockComment = true
                 blockComment.clear()
-                // handle one-liner
                 if (line.contains("*/")) {
                     blockComment.append(
                         line
@@ -95,7 +181,7 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 continue
             }
 
-            // --- Variable Extraction ---
+            // Variable Extraction
             val varDecl = Regex("""(--[A-Za-z0-9\-_]+)\s*:\s*([^;]+);""").find(line)
             if (varDecl != null) {
                 val varName = varDecl.groupValues[1]
@@ -104,10 +190,9 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 val entry = "$currentContext$DELIMITER$value$DELIMITER$comment"
                 val prev = map[varName]
                 map[varName] = if (prev == null) entry else prev + ENTRY_SEP + entry
-                lastComment = null // clear comment after associating
+                lastComment = null
             }
         }
-        map
     }
 
     override fun getKeyDescriptor(): KeyDescriptor<String> = EnumeratorStringDescriptor.INSTANCE
