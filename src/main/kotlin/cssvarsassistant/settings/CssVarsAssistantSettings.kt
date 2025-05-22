@@ -21,7 +21,7 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
     data class State(
         var showContextValues: Boolean = true,
         var allowIdeCompletions: Boolean = true,
-        var indexingScope: IndexingScope = IndexingScope.PROJECT_ONLY,
+        var indexingScope: IndexingScope = IndexingScope.PROJECT_WITH_IMPORTS,
         var maxImportDepth: Int = 3  // Prevent infinite recursion in @import chains
     )
 
@@ -34,19 +34,27 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
 
     var showContextValues: Boolean
         get() = state.showContextValues
-        set(value) { state.showContextValues = value }
+        set(value) {
+            state.showContextValues = value
+        }
 
     var allowIdeCompletions: Boolean
         get() = state.allowIdeCompletions
-        set(value) { state.allowIdeCompletions = value }
+        set(value) {
+            state.allowIdeCompletions = value
+        }
 
     var indexingScope: IndexingScope
         get() = state.indexingScope
-        set(value) { state.indexingScope = value }
+        set(value) {
+            state.indexingScope = value
+        }
 
     var maxImportDepth: Int
         get() = state.maxImportDepth
-        set(value) { state.maxImportDepth = value.coerceIn(1, 10) }
+        set(value) {
+            state.maxImportDepth = value.coerceIn(1, 10)
+        }
 
     // Computed properties for backward compatibility and clarity
     val useGlobalSearchScope: Boolean
