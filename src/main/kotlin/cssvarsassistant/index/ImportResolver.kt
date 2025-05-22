@@ -2,6 +2,7 @@ package cssvarsassistant.index
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 
@@ -94,11 +95,9 @@ object ImportResolver {
 
                 // Absolute paths (less common, but handle them)
                 importPath.startsWith("/") -> {
-                    val projectRoot = project.baseDir
+                    val projectRoot = project.guessProjectDir()
                     return projectRoot?.findFileByRelativePath(importPath.substring(1))
                 }
-
-                else -> null
             }
         } catch (e: Exception) {
             LOG.debug("Error resolving import path: $importPath", e)
@@ -161,7 +160,7 @@ object ImportResolver {
         }
 
         // Also check project root
-        val projectNodeModules = project.baseDir?.findChild("node_modules")
+        val projectNodeModules = project.guessProjectDir()?.findChild("node_modules")
         if (projectNodeModules != null && projectNodeModules.isDirectory) {
             return resolveInNodeModules(projectNodeModules, packagePath, currentFile)
         }
@@ -220,7 +219,7 @@ object ImportResolver {
      * Checks if a file should be considered for import resolution based on its location
      */
     fun isExternalImport(file: VirtualFile, project: Project): Boolean {
-        val projectRoot = project.baseDir?.path ?: return false
+        val projectRoot = project.guessProjectDir()?.path ?: return false
         val filePath = file.path
 
         // Check if file is in node_modules

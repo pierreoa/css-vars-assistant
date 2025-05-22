@@ -96,6 +96,11 @@ intellijPlatform {
 """.trimIndent()
 
     }
+    pluginVerification {
+        ides {
+            recommended()
+        }
+    }
 }
 
 tasks {

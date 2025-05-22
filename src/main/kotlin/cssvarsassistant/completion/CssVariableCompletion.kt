@@ -250,8 +250,10 @@ class CssVariableCompletion : CompletionContributor() {
 
             for (ext in fileTypes) {
                 for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
-                    FilenameIndex.getFilesByName(project, "$commonName$ext", scope, true)
-                        .forEach { potentialFiles.add(it.virtualFile) }
+                    val files = FilenameIndex.getAllFilesByExt(project, ext, scope)
+
+                    files.filter { it.name.startsWith(commonName) }
+                        .forEach { psiFile -> potentialFiles.add(psiFile) }
                 }
             }
 
