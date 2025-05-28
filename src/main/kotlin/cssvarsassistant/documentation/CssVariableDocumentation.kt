@@ -32,6 +32,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             val project = element.project
             if (DumbService.isDumb(project)) return null
 
+
             ProgressManager.checkCanceled()
             val settings = CssVarsAssistantSettings.getInstance()
             val varName = extractVariableName(element) ?: return null

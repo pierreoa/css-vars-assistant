@@ -38,8 +38,14 @@ class CssVarsAssistantConfigurable : Configurable {
         settings.indexingScope == CssVarsAssistantSettings.IndexingScope.GLOBAL
     )
 
-    private val maxImportDepthSpinner =
-        JSpinner(SpinnerNumberModel(settings.maxImportDepth, 1, CssVarsAssistantSettings.MAX_IMPORT_DEPTH, 1))
+    private val maxImportDepthSpinner = JSpinner(
+        SpinnerNumberModel(
+            settings.maxImportDepth.coerceIn(1, CssVarsAssistantSettings.MAX_IMPORT_DEPTH),
+            1,
+            CssVarsAssistantSettings.MAX_IMPORT_DEPTH,
+            1
+        )
+    )
 // Enhanced re-index button implementation
 // Replace the existing reindexButton ActionListener in CssVarsAssistantConfigurable.kt
 

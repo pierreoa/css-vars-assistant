@@ -6,8 +6,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.registry.Registry
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.css.CssFunction
 import com.intellij.psi.util.PsiTreeUtil
@@ -44,6 +44,8 @@ class CssVariableCompletion : CompletionContributor() {
         private const val PIXELS_PER_CHAR = 8
         private const val MIN_POPUP_WIDTH = 500
         private const val MAX_POPUP_WIDTH = 1100
+
+
     }
 
 
@@ -76,6 +78,9 @@ class CssVariableCompletion : CompletionContributor() {
                     result: CompletionResultSet
                 ) {
                     try {
+                        val project = params.position.project
+                        if (DumbService.isDumb(project)) return
+
                         // Check for cancellation at the start
                         ProgressManager.checkCanceled()
 
@@ -90,7 +95,6 @@ class CssVariableCompletion : CompletionContributor() {
 
                         val rawPref = result.prefixMatcher.prefix
                         val simple = rawPref.removePrefix("--")
-                        val project = pos.project
                         val settings = CssVarsAssistantSettings.getInstance()
 
                         // FIXED: Use CSS indexing scope for FileBasedIndex operations
@@ -220,16 +224,6 @@ class CssVariableCompletion : CompletionContributor() {
                             }
 
                         entries.sortBy { it.display }
-
-                        /* 1️⃣  ── compute an upper-bound width BEFORE the popup is created ───────── */
-                        val longestName = FileBasedIndex.getInstance()
-                            .getAllKeys(CSS_VARIABLE_INDEXER_NAME, project)
-                            .maxOfOrNull { it.length } ?: 0
-                        val newWidth = (longestName * PIXELS_PER_CHAR)
-                            .coerceIn(MIN_POPUP_WIDTH, MAX_POPUP_WIDTH)
-
-                        // will only update if it’s higher than the current value
-                        Registry.get("ide.completion.max.width").setValue(newWidth)
 
                         for (e in entries) {
                             // Check cancellation in completion generation loop

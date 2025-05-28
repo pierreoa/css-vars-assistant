@@ -17,4 +17,5 @@ object CssVarCompletionCache {
 
     @JvmStatic
     fun clearCaches() = clear()
+    
 }

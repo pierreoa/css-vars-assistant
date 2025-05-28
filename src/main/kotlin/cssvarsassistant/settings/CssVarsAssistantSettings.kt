@@ -30,7 +30,9 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
 
     override fun getState() = state
     override fun loadState(state: State) {
-        this.state = state
+        // clamp legacy / external values first
+        val clamped = state.maxImportDepth.coerceIn(1, MAX_IMPORT_DEPTH)
+        this.state = state.copy(maxImportDepth = clamped)
     }
 
     var showContextValues: Boolean
