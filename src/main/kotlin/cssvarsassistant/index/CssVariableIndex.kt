@@ -8,6 +8,7 @@ import com.intellij.util.io.DataExternalizer
 import com.intellij.util.io.EnumeratorStringDescriptor
 import com.intellij.util.io.IOUtil
 import com.intellij.util.io.KeyDescriptor
+import cssvarsassistant.completion.CssVarCompletionCache
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
 import java.io.DataInput
@@ -21,7 +22,7 @@ val CSS_VARIABLE_INDEXER_NAME = ID.create<String, String>("cssvarsassistant.inde
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
 
     override fun getName(): ID<String, String> = CSS_VARIABLE_INDEXER_NAME
-    override fun getVersion(): Int = 60  // Increment due to import resolution changes
+    override fun getVersion(): Int = 90  // Increment due to import resolution changes
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
         val registry = FileTypeRegistry.getInstance()
@@ -106,9 +107,8 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
 
             ImportCache.get(project).add(project, importedFiles)
 
-            // FIXED: Clear stale cache entries so variables are recomputed with new scope
             PreprocessorUtil.clearCache()
-
+            CssVarCompletionCache.clearCaches()
             for (importedFile in importedFiles) {
                 try {
                     val importedContent = String(importedFile.contentsToByteArray())

@@ -50,7 +50,7 @@ object ScopeUtil {
 
             CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
                 val extra = ImportCache.get(project).get(project)
-                val base = projectRoots.uniteWith(libraryRoots)       // include libs too
+                val base = projectRoots.uniteWith(libraryRoots)
                 if (extra.isEmpty()) base
                 else base.uniteWith(GlobalSearchScope.filesScope(project, extra))
             }

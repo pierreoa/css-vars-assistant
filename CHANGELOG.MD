@@ -18,7 +18,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 
 ### Changed
 * **Code architecture improvements** – extracted cache and index management into dedicated utility classes for better maintainability.
-* **Index version bump** ⇢ `50` (from `36`) for improved stability and compatibility.
 * **Re-index process enhancement** – more detailed progress reporting with visual feedback and error handling.
 * **Import resolution debugging** – comprehensive analysis shows full import trees, variable counts, and resolution failures.
 

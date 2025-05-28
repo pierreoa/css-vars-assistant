@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
+import cssvarsassistant.completion.CssVarCompletionCache
 import cssvarsassistant.completion.CssVariableCompletion
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
@@ -27,9 +28,9 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
-            // Check for cancellation early
 
             val project = element.project
+            // Check for cancellation early
             if (DumbService.isDumb(project)) return null
 
 
@@ -171,13 +172,18 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
             if (lessMatch != null) {
                 val varName = lessMatch.groupValues[1]
-                val cacheKey = Pair(project, varName)
 
-                lessVarCache[cacheKey]?.let { return it }
+                // FIXED: Use scope-aware cache
+                val currentScope = ScopeUtil.currentPreprocessorScope(project)
+                CssVarCompletionCache.get(project, varName, currentScope)?.let { return it }
 
-                // FIXED: Always use fresh scope for preprocessor resolution
                 val resolved = findPreprocessorVariableValue(project, varName)
-                if (resolved != null) lessVarCache[cacheKey] = resolved
+
+                // FIXED: Only cache non-null values and include scope
+                if (resolved != null) {
+                    CssVarCompletionCache.put(project, varName, currentScope, resolved)
+                }
+
                 return resolved ?: raw
             }
 

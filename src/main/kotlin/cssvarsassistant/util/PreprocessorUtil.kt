@@ -29,7 +29,6 @@ object PreprocessorUtil {
                 // Check for cancellation before expensive operations
                 ProgressManager.checkCanceled()
 
-                // This line was causing ProcessCanceledException
                 val files = FilenameIndex.getAllFilesByExt(project, ext, scope)
 
                 for (vf in files) {

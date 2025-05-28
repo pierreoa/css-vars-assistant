@@ -147,10 +147,10 @@ class CssVariableCompletion : CompletionContributor() {
                                     val varName = lessMatch.groupValues[1]
                                     CssVarCompletionCache.get(project, varName)?.let { return it }
 
-                                    CssVarCompletionCache.get(project, varName)?.let { return it }
-
                                     val resolved = findPreprocessorVariableValue(project, varName)
-                                    CssVarCompletionCache.put(project, varName, resolved)
+                                    if (resolved != null) {
+                                        CssVarCompletionCache.put(project, varName, resolved)
+                                    }
 
                                     return resolved ?: raw
 
