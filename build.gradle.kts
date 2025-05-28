@@ -66,32 +66,33 @@ intellijPlatform {
         }
 
         changeNotes = """
-      <h2>1.3.0 – 2025-05-27</h2>
+        <h2>1.3.1 – 2025-05-28</h2>
 
-      <h3>Added</h3>
-      <ul>
-        <li><b>Dynamic pre-processor resolution:</b> automatic, depth-limited resolution of chained <code>@less</code>, <code>\${'$'}scss</code> and nested <code>var(--foo)</code> references.</li>
-        <li><b>Import cache:</b> remembers every file reached via <code>@import</code>; instant look-ups after first pass.</li>
-        <li><b>🔄 Re-index Now</b> button in the Settings panel – rebuilds the variable index without needing <em>Invalidate Caches / Restart</em>.</li>
-        <li><b>Debug CSS Import Resolution</b> action to print the full, resolved import chain for any stylesheet.</li>
-        <li><b>Background-task integration:</b> long operations are cancellable and show progress.</li>
-      </ul>
+        <h3>Added</h3>
+        <ul>
+        <li><b>Enhanced Debug CSS Import Resolution</b> action – comprehensive import chain analysis with tree visualization, variable counting, and detailed resolution paths.</li>
+        <li><b>Dedicated completion cache</b> (<code>CssVarCompletionCache</code>) – separate caching system for LESS/SCSS variable resolution with improved performance.</li>
+        <li><b>Index rebuilder utility</b> (<code>CssVariableIndexRebuilder</code>) – centralized index management for better code organization.</li>
+        <li><b>Dynamic completion popup width</b> – automatically adjusts popup width based on longest variable name for better readability.</li>
+        <li><b>Enhanced progress reporting</b> – detailed progress indicators for re-indexing operations with step-by-step feedback.</li>
+        </ul>
 
-      <h3>Changed</h3>
-      <ul>
-        <li>Default <code>maxImportDepth</code> raised from <code>3</code> to <code>10</code> (still user-configurable).</li>
-        <li>Consistent plugin-shield icon for all completions originating from the assistant.</li>
-        <li>Scope utilities refactored – fresh scope calculated for every resolution to avoid stale caches.</li>
-      </ul>
+        <h3>Changed</h3>
+        <ul>
+        <li><b>Code architecture improvements</b> – extracted cache and index management into dedicated utility classes for better maintainability.</li>
+        <li>Index version bump to <code>50</code> (from <code>36</code>) for improved stability and compatibility.</li>
+        <li><b>Re-index process enhancement</b> – more detailed progress reporting with visual feedback and error handling.</li>
+        <li><b>Import resolution debugging</b> – comprehensive analysis shows full import trees, variable counts, and resolution failures.</li>
+        </ul>
 
-      <h3>Fixed</h3>
-      <ul>
-        <li><b>Project + Imports</b> scope now resolves real values (e.g. <code>--ffe-farge-vann → #005aa4</code>) instead of showing <code>@lessVar</code>.</li>
-        <li>Race condition that caused occasional <code>ProcessCanceledException</code> in large projects.</li>
-        <li>Index rebuild no longer double-counts <code>node_modules</code> in Global scope.</li>
-        <li>Numerous threading and cancellation-handling improvements.</li>
-      </ul>
-    """.trimIndent()
+        <h3>Fixed</h3>
+        <ul>
+        <li><b>Cache management</b> – resolved issues with stale cache entries affecting completion accuracy.</li>
+        <li><b>Index rebuilding reliability</b> – improved error handling and progress tracking during index operations.</li>
+        <li><b>Threading improvements</b> – better handling of background tasks and cancellation scenarios.</li>
+        <li><b>Memory optimization</b> – more efficient cache management reducing memory footprint.</li>
+        </ul>
+        """.trimIndent()
 
     }
     pluginVerification {

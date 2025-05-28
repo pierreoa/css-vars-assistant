@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.3.0  
+**Version:** 1.3.1  
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**  
 **Author:** Stian Larsen ([GitHub](https://github.com/stianlars1))
 
@@ -8,7 +8,17 @@ Boosts CSS Custom Properties with smart completion, rich documentation and full 
 
 ---
 
-## ✨ What’s new in 1.3.0
+## ✨ What's new in 1.3.1
+
+| Category | Highlights |
+|----------|------------|
+| **🔍 Enhanced debugging** | Comprehensive **Debug CSS Import Resolution** action with tree visualization, variable counting, and detailed resolution paths. |
+| **⚡ Performance improvements** | Dedicated completion cache (`CssVarCompletionCache`) and optimized memory management for faster variable resolution. |
+| **📐 Dynamic UI** | Completion popup width automatically adjusts based on longest variable name for better readability. |
+| **🔄 Better re-indexing** | Enhanced progress reporting with step-by-step feedback and improved error handling during index rebuilds. |
+| **🏗️ Architecture cleanup** | Code refactoring with extracted utility classes for better maintainability and stability. |
+
+### Previous highlights from 1.3.0
 
 | Category | Highlights |
 |----------|------------|
@@ -47,6 +57,22 @@ Open **Settings → Tools → CSS Variables Assistant**
 
 ---
 
+---
+
+## 🐞 Debugging import chains
+
+Need to verify *exactly* which files your `@import`s resolve to?
+1. **Right-click** any *.css / .scss / .sass / .less* file in the Project view <br>
+   *or* inside the editor.
+2. Select **“Debug CSS Import Resolution”**.
+3. A dialog shows:
+    * full import tree (`@import` depth-limited)
+    * circular-reference warnings
+    * variable counts per file  
+      A copy is also written to the IDE Log for later inspection.
+
+> 💡 Tip You can keep the dialog open while you edit – rerun the action to refresh.
+
 ## Troubleshooting
 
 | Symptom | Resolution |
@@ -65,3 +91,4 @@ git clone https://github.com/stianlars1/css-vars-assistant.git
 cd css-vars-assistant
 ./gradlew clean buildPlugin       # produces ZIP under build/distributions
 ./gradlew runIde                  # start sandbox IDE
+```
