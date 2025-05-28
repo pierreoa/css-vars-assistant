@@ -230,7 +230,7 @@ class DebugImportResolutionAction : AnAction() {
                 return arrayOf(okAction)
             }
         }
-        dialog.setResizable(true)
+        dialog.isResizable = true
         dialog.show()
 
         // Show success notification
