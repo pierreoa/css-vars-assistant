@@ -1,9 +1,7 @@
 package cssvarsassistant.completion
 
-import com.intellij.openapi.project.Project
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
-import java.util.concurrent.ConcurrentHashMap
 
 /** Global cache for LESS / SCSS fallback resolutions used by completion + docs. */
 object CssVariableIndexRebuilder {

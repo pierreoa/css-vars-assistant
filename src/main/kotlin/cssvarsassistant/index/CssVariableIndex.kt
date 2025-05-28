@@ -21,7 +21,7 @@ val CSS_VARIABLE_INDEXER_NAME = ID.create<String, String>("cssvarsassistant.inde
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
 
     override fun getName(): ID<String, String> = CSS_VARIABLE_INDEXER_NAME
-    override fun getVersion(): Int = 50  // Increment due to import resolution changes
+    override fun getVersion(): Int = 60  // Increment due to import resolution changes
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
         val registry = FileTypeRegistry.getInstance()
@@ -100,7 +100,8 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
             val importedFiles = ImportResolver.resolveImports(
                 file,
                 project,
-                settings.maxImportDepth
+                settings.maxImportDepth,
+                currentDepth = 0
             )
 
             ImportCache.get(project).add(project, importedFiles)

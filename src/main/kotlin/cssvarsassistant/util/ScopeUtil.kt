@@ -2,6 +2,7 @@ package cssvarsassistant.util
 
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.ProjectScope
 import cssvarsassistant.index.ImportCache
 import cssvarsassistant.settings.CssVarsAssistantSettings
 
@@ -35,20 +36,25 @@ object ScopeUtil {
      */
     fun currentPreprocessorScope(project: Project): GlobalSearchScope {
         val settings = CssVarsAssistantSettings.getInstance()
+
+        val projectRoots = GlobalSearchScope.projectScope(project)
+        val libraryRoots = ProjectScope.getLibrariesScope(project)
+
+
         return when (settings.indexingScope) {
             CssVarsAssistantSettings.IndexingScope.GLOBAL ->
-                GlobalSearchScope.allScope(project)
+                GlobalSearchScope.allScope(project)                     // already includes libs
 
             CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY ->
-                GlobalSearchScope.projectScope(project)
+                projectRoots.uniteWith(libraryRoots)                   // project + node_modules
 
             CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
                 val extra = ImportCache.get(project).get(project)
-                val base = GlobalSearchScope.projectScope(project)
-                if (extra.isEmpty()) base else base.uniteWith(
-                    GlobalSearchScope.filesScope(project, extra)
-                )
+                val base = projectRoots.uniteWith(libraryRoots)       // include libs too
+                if (extra.isEmpty()) base
+                else base.uniteWith(GlobalSearchScope.filesScope(project, extra))
             }
         }
+
     }
 }

@@ -10,7 +10,6 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.util.ui.JBUI
 import cssvarsassistant.completion.CssVarCompletionCache
 import cssvarsassistant.completion.CssVariableIndexRebuilder
-import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.ImportCache
 import cssvarsassistant.util.PreprocessorUtil
 import java.awt.GridBagConstraints
@@ -39,7 +38,8 @@ class CssVarsAssistantConfigurable : Configurable {
         settings.indexingScope == CssVarsAssistantSettings.IndexingScope.GLOBAL
     )
 
-    private val maxImportDepthSpinner = JSpinner(SpinnerNumberModel(settings.maxImportDepth, 1, 10, 1))
+    private val maxImportDepthSpinner =
+        JSpinner(SpinnerNumberModel(settings.maxImportDepth, 1, CssVarsAssistantSettings.MAX_IMPORT_DEPTH, 1))
 // Enhanced re-index button implementation
 // Replace the existing reindexButton ActionListener in CssVarsAssistantConfigurable.kt
 

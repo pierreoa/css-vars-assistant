@@ -18,11 +18,12 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         GLOBAL                  // Full node_modules indexing
     }
 
+
     data class State(
         var showContextValues: Boolean = true,
         var allowIdeCompletions: Boolean = true,
         var indexingScope: IndexingScope = IndexingScope.PROJECT_WITH_IMPORTS,
-        var maxImportDepth: Int = 10  // Prevent infinite recursion in @import chains
+        var maxImportDepth: Int = 20  // Prevent infinite recursion in @import chains
     )
 
     private var state = State()
@@ -53,7 +54,7 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
     var maxImportDepth: Int
         get() = state.maxImportDepth
         set(value) {
-            state.maxImportDepth = value.coerceIn(1, 10)
+            state.maxImportDepth = value.coerceIn(1, MAX_IMPORT_DEPTH)
         }
 
     // Computed properties for backward compatibility and clarity
@@ -67,6 +68,9 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         get() = indexingScope == IndexingScope.PROJECT_ONLY
 
     companion object {
+        const val MAX_IMPORT_DEPTH = 20
+
+
         @JvmStatic
         fun getInstance() = com.intellij.openapi.application.ApplicationManager
             .getApplication()

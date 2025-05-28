@@ -305,7 +305,8 @@ class DebugImportResolutionAction : AnAction() {
      */
     private fun extractImportPaths(content: String): List<String> {
         val imports = mutableListOf<String>()
-        val IMPORT_PATTERN = Regex("""@import\s+(?:"([^"]+)"|'([^']+)'|\burl\(\s*(?:"([^"]+)"|'([^']+)'|([^)]+))\s*\))""")
+        val IMPORT_PATTERN =
+            Regex("""@import\s+(?:"([^"]+)"|'([^']+)'|\burl\(\s*(?:"([^"]+)"|'([^']+)'|([^)]+))\s*\))""")
 
         IMPORT_PATTERN.findAll(content).forEach { match ->
             val importPath = match.groupValues.drop(1).firstOrNull { it.isNotBlank() }
@@ -320,18 +321,25 @@ class DebugImportResolutionAction : AnAction() {
     /**
      * Resolve import path to VirtualFile (simplified version of ImportResolver logic)
      */
-    private fun resolveImportPath(currentFile: VirtualFile, importPath: String, project: com.intellij.openapi.project.Project): VirtualFile? {
+    private fun resolveImportPath(
+        currentFile: VirtualFile,
+        importPath: String,
+        project: com.intellij.openapi.project.Project
+    ): VirtualFile? {
         return try {
             when {
                 importPath.startsWith("./") || importPath.startsWith("../") -> {
                     resolveRelativePath(currentFile, importPath)
                 }
+
                 importPath.startsWith("/") -> {
                     project.guessProjectDir()?.findFileByRelativePath(importPath.removePrefix("/"))
                 }
+
                 importPath.startsWith("@") -> {
                     resolveNodeModulesPath(currentFile, importPath, project)
                 }
+
                 else -> {
                     val localFile = resolveRelativePath(currentFile, importPath)
                     if (localFile != null && localFile.exists()) {
@@ -350,7 +358,10 @@ class DebugImportResolutionAction : AnAction() {
         val currentDir = currentFile.parent ?: return null
 
         if (relativePath.contains('.')) {
-            return com.intellij.openapi.vfs.VfsUtil.findRelativeFile(currentDir, *relativePath.split('/').toTypedArray())
+            return com.intellij.openapi.vfs.VfsUtil.findRelativeFile(
+                currentDir,
+                *relativePath.split('/').toTypedArray()
+            )
         }
 
         val currentExtension = currentFile.extension?.lowercase()
@@ -363,7 +374,10 @@ class DebugImportResolutionAction : AnAction() {
 
         for (ext in prioritizedExtensions) {
             val pathWithExtension = "$relativePath.$ext"
-            val resolved = com.intellij.openapi.vfs.VfsUtil.findRelativeFile(currentDir, *pathWithExtension.split('/').toTypedArray())
+            val resolved = com.intellij.openapi.vfs.VfsUtil.findRelativeFile(
+                currentDir,
+                *pathWithExtension.split('/').toTypedArray()
+            )
             if (resolved != null && resolved.exists()) {
                 return resolved
             }
@@ -372,7 +386,11 @@ class DebugImportResolutionAction : AnAction() {
         return null
     }
 
-    private fun resolveNodeModulesPath(currentFile: VirtualFile, packagePath: String, project: com.intellij.openapi.project.Project): VirtualFile? {
+    private fun resolveNodeModulesPath(
+        currentFile: VirtualFile,
+        packagePath: String,
+        project: com.intellij.openapi.project.Project
+    ): VirtualFile? {
         var searchDir = currentFile.parent
 
         while (searchDir != null) {
@@ -392,7 +410,11 @@ class DebugImportResolutionAction : AnAction() {
         return null
     }
 
-    private fun resolveInNodeModules(nodeModules: VirtualFile, packagePath: String, importingFile: VirtualFile): VirtualFile? {
+    private fun resolveInNodeModules(
+        nodeModules: VirtualFile,
+        packagePath: String,
+        importingFile: VirtualFile
+    ): VirtualFile? {
         if (packagePath.contains('.')) {
             val pathParts = packagePath.split('/')
             var current = nodeModules

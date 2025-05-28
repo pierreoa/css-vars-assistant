@@ -83,14 +83,17 @@ object ImportResolver {
                     // Explicit relative path
                     resolveRelativePath(currentFile, importPath)
                 }
+
                 importPath.startsWith("/") -> {
                     // Absolute path: resolve from project root
                     project.guessProjectDir()?.findFileByRelativePath(importPath.removePrefix("/"))
                 }
+
                 importPath.startsWith("@") -> {
                     // Scoped or package path (node_modules)
                     resolveNodeModulesPath(currentFile, importPath, project)
                 }
+
                 else -> {
                     // Bare path (no ./, no /, no @) – likely a relative import in same dir
                     val localFile = resolveRelativePath(currentFile, importPath)

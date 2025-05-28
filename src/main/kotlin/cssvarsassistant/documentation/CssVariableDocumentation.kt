@@ -5,13 +5,15 @@ import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVariableCompletion
-import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
+import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
@@ -26,12 +28,13 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
             // Check for cancellation early
-            ProgressManager.checkCanceled()
 
-            val varName = extractVariableName(element) ?: return null
-            val settings = CssVarsAssistantSettings.getInstance()
             val project = element.project
+            if (DumbService.isDumb(project)) return null
 
+            ProgressManager.checkCanceled()
+            val settings = CssVarsAssistantSettings.getInstance()
+            val varName = extractVariableName(element) ?: return null
             // FIXED: Use CSS indexing scope for FileBasedIndex operations
             val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
@@ -67,8 +70,10 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
             val sb = StringBuilder()
             sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
-            if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name)).append("</b><br/>")
-            sb.append("<small>CSS Variable: <code>").append(StringUtil.escapeXmlEntities(varName)).append("</code></small>").append(DocumentationMarkup.DEFINITION_END)
+            if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name))
+                .append("</b><br/>")
+            sb.append("<small>CSS Variable: <code>").append(StringUtil.escapeXmlEntities(varName))
+                .append("</code></small>").append(DocumentationMarkup.DEFINITION_END)
                 .append(DocumentationMarkup.CONTENT_START)
 
             sb.append("<p><b>Values:</b></p>")
@@ -239,5 +244,14 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         if (arrayOf("hover", "motion", "orientation", "print").any { it in c }) return Triple(4, null, c)
 
         return Triple(5, null, c)
+    }
+}
+
+/** Runs [action] only when indices are ready, otherwise returns an empty list. */
+private inline fun <T> safeIndexLookup(project: Project, action: () -> List<T>): List<T> {
+    return if (DumbService.isDumb(project)) emptyList() else try {
+        action()
+    } catch (ignored: IndexNotReadyException) {           // ➌ safety-net
+        emptyList()
     }
 }
