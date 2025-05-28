@@ -1,9 +1,9 @@
 package cssvarsassistant.documentation
 
+import com.intellij.util.ui.ColorIcon
+import javax.swing.Icon
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import javax.swing.Icon
-import com.intellij.util.ui.ColorIcon
 
 class IconUtilTest {
     @Test fun `tiny red dot dataUri`() {

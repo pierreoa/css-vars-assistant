@@ -75,36 +75,36 @@ object ImportResolver {
     /**
      * Resolves a single import path relative to the current file
      */
-    private fun resolveImportPath(
-        currentFile: VirtualFile,
-        importPath: String,
-        project: Project
-    ): VirtualFile? {
+    private fun resolveImportPath(currentFile: VirtualFile, importPath: String, project: Project): VirtualFile? {
         try {
-            // Handle different types of import paths
-            when {
-                // Relative paths (./file.css, ../file.css)
+            return when {
                 importPath.startsWith("./") || importPath.startsWith("../") -> {
-                    return resolveRelativePath(currentFile, importPath)
+                    // Explicit relative path
+                    resolveRelativePath(currentFile, importPath)
                 }
-
-                // Node modules paths (@package/file, package/file)
-                importPath.startsWith("@") || !importPath.startsWith("/") -> {
-                    return resolveNodeModulesPath(currentFile, importPath, project)
-                }
-
-                // Absolute paths (less common, but handle them)
                 importPath.startsWith("/") -> {
-                    val projectRoot = project.guessProjectDir()
-                    return projectRoot?.findFileByRelativePath(importPath.substring(1))
+                    // Absolute path: resolve from project root
+                    project.guessProjectDir()?.findFileByRelativePath(importPath.removePrefix("/"))
+                }
+                importPath.startsWith("@") -> {
+                    // Scoped or package path (node_modules)
+                    resolveNodeModulesPath(currentFile, importPath, project)
+                }
+                else -> {
+                    // Bare path (no ./, no /, no @) – likely a relative import in same dir
+                    val localFile = resolveRelativePath(currentFile, importPath)
+                    if (localFile != null && localFile.exists()) {
+                        localFile  // Found e.g. "colors-semantic.less" in current directory
+                    } else {
+                        // Not a file in current folder, treat as a node_modules package path
+                        resolveNodeModulesPath(currentFile, importPath, project)
+                    }
                 }
             }
         } catch (e: Exception) {
             LOG.debug("Error resolving import path: $importPath", e)
             return null
         }
-        return null
-
     }
 
     /**

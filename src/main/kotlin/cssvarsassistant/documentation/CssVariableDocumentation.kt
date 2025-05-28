@@ -3,36 +3,39 @@ package cssvarsassistant.documentation
 import com.intellij.lang.documentation.AbstractDocumentationProvider
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
+import cssvarsassistant.completion.CssVariableCompletion
 import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
+import cssvarsassistant.util.PreprocessorUtil
+import cssvarsassistant.util.ScopeUtil
 
 class CssVariableDocumentation : AbstractDocumentationProvider() {
+    private val logger = Logger.getInstance(CssVariableCompletion::class.java)
 
-    private val LOG = Logger.getInstance(CssVariableDocumentation::class.java)
     private val ENTRY_SEP = "|||"
-    private val LESS_VAR_PATTERN = Regex("""^@([\w-]+)$""")
     private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
+            // Check for cancellation early
+            ProgressManager.checkCanceled()
+
             val varName = extractVariableName(element) ?: return null
             val settings = CssVarsAssistantSettings.getInstance()
             val project = element.project
-            val scope = when (settings.indexingScope) {
-                CssVarsAssistantSettings.IndexingScope.GLOBAL -> GlobalSearchScope.allScope(project)
-                else -> GlobalSearchScope.projectScope(project)
-            }
 
-            val rawEntries = FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, varName, scope)
+            // FIXED: Use CSS indexing scope for FileBasedIndex operations
+            val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
+
+            val rawEntries = FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, varName, cssScope)
                 .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
 
             if (rawEntries.isEmpty()) return null
@@ -41,7 +44,8 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 val p = it.split(DELIMITER, limit = 3)
                 if (p.size >= 2) {
                     val ctx = p[0]
-                    val value = resolveVarValue(project, p[1], scope)
+                    // FIXED: Pass project instead of scope to resolveVarValue
+                    val value = resolveVarValue(project, p[1])
                     val comment = p.getOrElse(2) { "" }
                     Triple(ctx, value, comment)
                 } else null
@@ -63,8 +67,8 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
             val sb = StringBuilder()
             sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
-            if (doc.name.isNotBlank()) sb.append("<b>").append(doc.name).append("</b><br/>")
-            sb.append("<small>CSS Variable: <code>$varName</code></small>").append(DocumentationMarkup.DEFINITION_END)
+            if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name)).append("</b><br/>")
+            sb.append("<small>CSS Variable: <code>").append(StringUtil.escapeXmlEntities(varName)).append("</code></small>").append(DocumentationMarkup.DEFINITION_END)
                 .append(DocumentationMarkup.CONTENT_START)
 
             sb.append("<p><b>Values:</b></p>")
@@ -74,9 +78,12 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 .append("<td align='left'>Value</td></tr>")
 
             for ((ctx, value, _) in sorted) {
+                // Check for cancellation in loops
+                ProgressManager.checkCanceled()
+
                 val isColour = ColorParser.parseCssColor(value) != null
                 sb.append("<tr><td style='color:#888;padding-right:10px'>")
-                    .append(contextLabel(ctx))
+                    .append(StringUtil.escapeXmlEntities(contextLabel(ctx, isColour)))
                     .append("</td><td>")
                 if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
                 sb.append("</td><td>")
@@ -108,105 +115,99 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             sb.append(DocumentationMarkup.CONTENT_END).append("</body></html>")
 
             return sb.toString()
+        } catch (e: ProcessCanceledException) {
+            // CRITICAL: Always rethrow ProcessCanceledException
+            throw e
         } catch (e: Exception) {
-            LOG.error("Error generating documentation", e)
+            logger.error("Error generating documentation", e)
             return null
         }
     }
 
+    // FIXED: Always use fresh scope for resolution
     private fun resolveVarValue(
         project: Project,
         raw: String,
-        scope: GlobalSearchScope,
         visited: Set<String> = emptySet(),
-        depth: Int = 0
+        depth: Int = 0,
     ): String {
-        if (depth > 5) return raw
+        val settings = CssVarsAssistantSettings.getInstance()
+        if (depth > settings.maxImportDepth) return raw
 
-        val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
-        if (varRef != null) {
-            val ref = varRef.groupValues[1]
-            if (ref in visited) return raw
+        try {
+            ProgressManager.checkCanceled()
 
-            val entries =
-                FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, ref, scope)
-                    .flatMap { it.split(ENTRY_SEP) }
-                    .filter { it.isNotBlank() }
+            // ── 1. CSS var(..) ───────────────────────────────────────
+            Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)?.let { m ->
+                val ref = m.groupValues[1]
+                if (ref !in visited) {
+                    // Use CSS indexing scope for FileBasedIndex operations
+                    val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
+                    val entries = FileBasedIndex.getInstance()
+                        .getValues(CssVariableIndex.NAME, ref, cssScope)
+                        .flatMap { it.split(ENTRY_SEP) }
+                        .filter { it.isNotBlank() }
 
-            val defValue = entries.mapNotNull {
-                val p = it.split(DELIMITER, limit = 3)
-                if (p.size >= 2) p[0] to p[1] else null
-            }.let { pairs ->
-                pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
-            } ?: return raw
+                    val defVal = entries.mapNotNull {
+                        val p = it.split(DELIMITER, limit = 3)
+                        if (p.size >= 2) p[0] to p[1] else null
+                    }.let { list ->
+                        list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
+                    }
 
-            return resolveVarValue(project, defValue, scope, visited + ref, depth + 1)
+                    if (defVal != null)
+                        return resolveVarValue(project, defVal, visited + ref, depth + 1)
+                }
+                return raw
+            }
+
+            // ── 2. LESS / SCSS pre-prosessor-vars ────────────────────
+            val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
+            if (lessMatch != null) {
+                val varName = lessMatch.groupValues[1]
+                val cacheKey = Pair(project, varName)
+
+                lessVarCache[cacheKey]?.let { return it }
+
+                // FIXED: Always use fresh scope for preprocessor resolution
+                val resolved = findPreprocessorVariableValue(project, varName)
+                if (resolved != null) lessVarCache[cacheKey] = resolved
+                return resolved ?: raw
+            }
+
+            return raw
+        } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failed to resolve variable in documentation: $raw", e)
+            return raw
         }
-
-        val lessVarMatch = LESS_VAR_PATTERN.find(raw.trim())
-        if (lessVarMatch != null) {
-            val varName = lessVarMatch.groupValues[1]
-            val cacheKey = Pair(project, varName)
-            lessVarCache[cacheKey]?.let { return it }
-
-            val resolvedValue = findPreprocessorVariableValue(project, varName, scope)
-            lessVarCache[cacheKey] = resolvedValue
-            return resolvedValue ?: raw
-        }
-
-        return raw
     }
 
+    // FIXED: Always use fresh scope for preprocessor resolution
     private fun findPreprocessorVariableValue(
         project: Project,
-        varName: String,
-        scope: GlobalSearchScope
+        varName: String
     ): String? {
-        try {
-            val potentialFiles = mutableListOf<VirtualFile>()
-            val fileTypes = listOf(".less", ".scss", ".sass", ".css")
-
-            for (ext in fileTypes) {
-                for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
-                    FilenameIndex.getAllFilesByExt(project, "$commonName$ext", scope)
-                        .forEach { potentialFiles.add(it) }
-                }
-            }
-
-            for (file in potentialFiles) {
-                try {
-                    val content = String(file.contentsToByteArray())
-
-                    val lessPattern = Regex("""@${Regex.escape(varName)}:\s*([^;]+);""")
-                    lessPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val scssPattern = Regex("""\$${Regex.escape(varName)}:\s*([^;]+);""")
-                    scssPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val cssVarPattern = Regex("""--${Regex.escape(varName)}:\s*([^;]+);""")
-                    cssVarPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-                } catch (e: Exception) {
-                    LOG.debug("Error reading file ${file.path}", e)
-                }
-            }
-
-            return null
+        return try {
+            // Always compute fresh scope to see newly discovered imports
+            val freshScope = ScopeUtil.currentPreprocessorScope(project)
+            PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        } catch (e: ProcessCanceledException) {
+            throw e
         } catch (e: Exception) {
-            LOG.error("Error finding preprocessor variable value", e)
-            return null
+            logger.warn("Failed to find preprocessor variable in doc-menu: $varName", e)
+            null
         }
     }
 
-    private fun contextLabel(ctx: String): String = when {
-        ctx == "default" -> "Default"
-        "prefers-color-scheme" in ctx.lowercase() && "light" in ctx.lowercase() -> "Light"
-        "prefers-color-scheme" in ctx.lowercase() && "dark" in ctx.lowercase() -> "Dark"
+    private fun contextLabel(ctx: String, isColor: Boolean): String = when {
+        ctx == "default" -> {
+            if (isColor) "Light mode" else "Default"
+        }
+
+        "prefers-color-scheme" in ctx.lowercase() && "light" in ctx.lowercase() -> "Light mode"
+        "prefers-color-scheme" in ctx.lowercase() && "dark" in ctx.lowercase() -> "Dark mode"
         Regex("""max-width:\s*(\d+)""").find(ctx) != null -> "≤${Regex("""max-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
         Regex("""min-width:\s*(\d+)""").find(ctx) != null -> "≥${Regex("""min-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
         else -> ctx

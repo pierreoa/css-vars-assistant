@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.2.0"
+version = "1.3.1"
 
 
 
@@ -66,34 +66,32 @@ intellijPlatform {
         }
 
         changeNotes = """
-    <h2>1.2.0 – 2025‑05‑22</h2>
+      <h2>1.3.0 – 2025-05-27</h2>
 
-    <h3>Added</h3>
-    <ul>
-      <li><b>Advanced @import resolution:</b> intelligent resolution of <code>@import</code> statements across CSS, SCSS, SASS, and LESS files.</li>
-      <li><b>Smart node_modules handling:</b> properly resolves scoped packages like <code>@company/package/path</code>.</li>
-      <li><b>Configurable indexing scope:</b> choose between project‑only, project + imports, or full global indexing.</li>
-      <li><b>Import depth control:</b> configurable maximum depth for <code>@import</code> chains to prevent infinite recursion.</li>
-      <li><b>Enhanced settings panel:</b> fine‑tune plugin behavior with expanded configuration options.</li>
-      <li><b>Debug tools:</b> new "Debug CSS Import Resolution" action for troubleshooting import chains.</li>
-    </ul>
+      <h3>Added</h3>
+      <ul>
+        <li><b>Dynamic pre-processor resolution:</b> automatic, depth-limited resolution of chained <code>@less</code>, <code>\${'$'}scss</code> and nested <code>var(--foo)</code> references.</li>
+        <li><b>Import cache:</b> remembers every file reached via <code>@import</code>; instant look-ups after first pass.</li>
+        <li><b>🔄 Re-index Now</b> button in the Settings panel – rebuilds the variable index without needing <em>Invalidate Caches / Restart</em>.</li>
+        <li><b>Debug CSS Import Resolution</b> action to print the full, resolved import chain for any stylesheet.</li>
+        <li><b>Background-task integration:</b> long operations are cancellable and show progress.</li>
+      </ul>
 
-    <h3>Improved</h3>
-    <ul>
-      <li><b>Multi‑extension support:</b> automatically tries <code>.css</code>, <code>.scss</code>, <code>.sass</code>, <code>.less</code> extensions when resolving imports.</li>
-      <li><b>Relative path resolution:</b> better handling of <code>./</code> and <code>../</code> import paths.</li>
-      <li><b>Performance optimizations:</b> smarter file filtering and caching for faster completion suggestions.</li>
-      <li><b>Error handling:</b> improved stability when processing malformed import statements.</li>
-    </ul>
+      <h3>Changed</h3>
+      <ul>
+        <li>Default <code>maxImportDepth</code> raised from <code>3</code> to <code>10</code> (still user-configurable).</li>
+        <li>Consistent plugin-shield icon for all completions originating from the assistant.</li>
+        <li>Scope utilities refactored – fresh scope calculated for every resolution to avoid stale caches.</li>
+      </ul>
 
-    <h3>Fixed</h3>
-    <ul>
-      <li>Import resolution now correctly distinguishes between relative paths and node_modules packages.</li>
-      <li>Deprecated API usage replaced with modern IntelliJ Platform APIs.</li>
-      <li>Better handling of circular import dependencies.</li>
-      <li>Improved compatibility with latest WebStorm/IntelliJ versions.</li>
-    </ul>
-""".trimIndent()
+      <h3>Fixed</h3>
+      <ul>
+        <li><b>Project + Imports</b> scope now resolves real values (e.g. <code>--ffe-farge-vann → #005aa4</code>) instead of showing <code>@lessVar</code>.</li>
+        <li>Race condition that caused occasional <code>ProcessCanceledException</code> in large projects.</li>
+        <li>Index rebuild no longer double-counts <code>node_modules</code> in Global scope.</li>
+        <li>Numerous threading and cancellation-handling improvements.</li>
+      </ul>
+    """.trimIndent()
 
     }
     pluginVerification {

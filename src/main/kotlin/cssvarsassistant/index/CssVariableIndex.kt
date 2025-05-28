@@ -9,6 +9,7 @@ import com.intellij.util.io.EnumeratorStringDescriptor
 import com.intellij.util.io.IOUtil
 import com.intellij.util.io.KeyDescriptor
 import cssvarsassistant.settings.CssVarsAssistantSettings
+import cssvarsassistant.util.PreprocessorUtil
 import java.io.DataInput
 import java.io.DataOutput
 
@@ -18,10 +19,13 @@ private const val ENTRY_SEP = "|||"
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
     companion object {
         val NAME = ID.create<String, String>("cssvarsassistant.index")
+
+        fun forceRebuild() = FileBasedIndex.getInstance()
+            .requestRebuild(NAME)
     }
 
     override fun getName(): ID<String, String> = NAME
-    override fun getVersion(): Int = 6  // Increment due to import resolution changes
+    override fun getVersion(): Int = 36  // Increment due to import resolution changes
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
         val registry = FileTypeRegistry.getInstance()
@@ -102,6 +106,11 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 project,
                 settings.maxImportDepth
             )
+
+            ImportCache.get(project).add(project, importedFiles)
+
+            // FIXED: Clear stale cache entries so variables are recomputed with new scope
+            PreprocessorUtil.clearCache()
 
             for (importedFile in importedFiles) {
                 try {

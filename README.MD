@@ -1,102 +1,67 @@
-# CSS Variables Assistant
+# CSS Variables Assistant  🔧🎨
 
-**Version**: 1.2.0  
-**IDE**: WebStorm / IntelliJ 2025.1+  
-**Author**: Stian Larsen ([GitHub](https://github.com/stianlars1/css-vars-assistant))
+**Version:** 1.3.0  
+**Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**  
+**Author:** Stian Larsen ([GitHub](https://github.com/stianlars1))
 
-Enhances CSS Custom Properties with:
+Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
 
-- **Context‑aware autocomplete** inside <code>var(--…)</code>
-- **Quick Documentation** (<kbd>Ctrl</kbd>+<kbd>Q</kbd> / hover) showing value table, description, examples &amp; colour swatches
-- **Advanced @import resolution** with configurable scope and depth control
-- **JSDoc‑style comment tags**: <code>@name</code>, <code>@description</code> (or <code>@desc</code>), <code>@example</code>
-- **Multi‑preprocessor support**: CSS, SCSS, SASS, LESS with intelligent extension resolution
-- **Works in**: CSS, SCSS, SASS, LESS, JavaScript / TypeScript, and JSX / TSX files
+---
 
-## v 1.2.0 Highlights
+## ✨ What’s new in 1.3.0
 
-- **🚀 Advanced @import resolution** – intelligently resolves <code>@import</code> statements across all supported preprocessor formats.
-- **📦 Smart node_modules handling** – properly resolves scoped packages like <code>@company/package/path</code> and handles relative imports.
-- **⚙️ Configurable indexing scope** – choose your indexing strategy:
-   - **Project only** – index variables from your project files only
-   - **Project + imports** – selectively index <code>@import</code> targets from external packages
-   - **Global** – index all CSS variables from entire <code>node_modules</code> (performance impact)
-- **🔧 Enhanced settings panel** – fine‑tune plugin behavior under **Settings → Tools → CSS Variables Assistant**.
-- **🛠️ Debug tools** – new "Debug CSS Import Resolution" action for troubleshooting import chains.
-- **🎯 Multi‑extension support** – automatically tries <code>.css</code>, <code>.scss</code>, <code>.sass</code>, <code>.less</code> when resolving imports.
+| Category | Highlights |
+|----------|------------|
+| **🚀 Value resolution** | Follows chained `@less`, `$scss` and alias `var(--foo)` references – even across imported packages – until it reaches a literal value. |
+| **📦 Import cache** | Remembers every file reached via `@import`, giving instant look-ups after the first pass. |
+| **🔄 Re-index Now button** | One-click rebuild in **Settings → Tools → CSS Variables Assistant** – no more *Invalidate Caches / Restart*. |
+| **🧭 Debug action** | *Debug CSS Import Resolution* (context menu) prints the full import chain and indicates skipped circular references. |
+| **🛡️ Stability** | Race conditions fixed, proper cancellation handling, fewer `ProcessCanceledException`s in large repos. |
 
-## Previous Features
+See full details in [`CHANGELOG.MD`](./CHANGELOG.MD).
 
-- **Alias resolution** – completions &amp; docs follow <code>var(--alias)</code> chains and show the real value.
-- **Duplicate squashing** – identical <em>(context + value)</em> rows collapse into one.
-- **Light counts as primary** – <code>prefers-color-scheme: light</code> is treated the same as <code>default</code>.
-- **Smart documentation order** – Default/Light → Dark → <code>max‑width</code> (large→small) → <code>min‑width</code> (small→large) → other media.
-- **Dual colour swatches** – always displayed for light/dark pairs, even when they alias to identical hues.
+---
+
+## Core Features
+
+* **Context-aware completion** inside `var(-- … )`
+* **Quick Documentation** (<kbd>Ctrl Q</kbd> / hover) with table, swatches, description & examples
+* **@import traversal** for CSS, SCSS, SASS & LESS with smart extension inference
+* **Recursive var() & pre-processor alias resolution**
+* **JSDoc-style tags** `@name`, `@description`, `@example`
+* Works inside **CSS / SCSS / SASS / LESS / JS / TS / JSX / TSX**
 
 ---
 
 ## Configuration
 
-Access plugin settings via **Settings → Tools → CSS Variables Assistant**:
+Open **Settings → Tools → CSS Variables Assistant**
 
-### Indexing Scope Options
-
-**Project files only**  
-Only variables defined in your project files are indexed. Fastest option with minimal memory usage.
-
-**Project files + @import resolution** *(recommended)*  
-Project files plus selective resolution of `@import` statements to external packages. Only the exact imported files are indexed, not entire node_modules.
-
-**Full global scope**  
-Complete indexing of all CSS files in node_modules and libraries. May impact IDE performance with large projects.
-
-### Additional Settings
-
-- **Show context-based variable values** – display different values for light/dark modes, media queries, etc.
-- **Allow IDE built-in completions** – fallback to IntelliJ's completions for variables not found by the plugin
-- **Maximum @import chain depth** – prevent infinite recursion in import chains (1-10, default: 3)
+| Option | Effect |
+|--------|--------|
+| **Indexing scope** | *Project only* • *Project + imports* (recommended) • *Full global* |
+| **Max @import depth** | 1 – 10 (default 10) |
+| **Show context values** | Display dark/light & media-query variants |
+| **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses |
+| **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately |
 
 ---
 
 ## Troubleshooting
 
-### Debug Import Resolution
-
-Right‑click on any CSS/SCSS/SASS/LESS file and select **"Debug CSS Import Resolution"** to see:
-- Which `@import` statements were found
-- How each import path was resolved
-- Which files were successfully indexed
-- Import chain depth and circular dependency detection
-
-### Common Issues
-
-**Variables not appearing in completions:**
-1. Check your indexing scope setting
-2. Verify `@import` statements use correct syntax
-3. Use the debug tool to trace import resolution
-4. Try invalidating caches: **File → Invalidate Caches and Restart**
-
-**Performance issues:**
-- Switch from "Full global scope" to "Project + imports" indexing
-- Reduce maximum import depth setting
-- Exclude unnecessary directories from project scope
+| Symptom | Resolution |
+|---------|------------|
+| Variable shows `@lessVar` instead of real colour | Click **Re-index Now**, wait for *Updating indexes…* to finish. |
+| Completions missing after changing scope | Re-index or restart IDE (button normally suffices). |
+| Slow indexing | Use *Project + imports*, lower max-depth, exclude large folders. |
+| Need to see where a variable came from | Right-click file → **Debug CSS Import Resolution**. |
 
 ---
 
-## Installation (locally)
+## Building & Testing Locally
 
-1. `git clone https://github.com/stianlars1/css-vars-assistant.git`
-2. `cd css-vars-assistant`
-3. `./gradlew clean buildPlugin`
-4. Test the plugin by either
-   1. **Plugins → ⚙️ → Install Plugin from Disk…** → select `build/distributions/css-vars-assistant-1.2.0.zip`, or
-   2. `./gradlew runIde` (start a sandbox IDE with the plugin loaded).
-
----
-
-## Publishing to JetBrains Marketplace
-
-**Prerequisites**
-
-- JetBrains account with **Plugin Developer** role
-- [Marketplace publish token (PUBLISH_TOKEN)](https://plugins.jetbrains.com/docs/marketplace/generate-plugin-signing-token.html)
+```bash
+git clone https://github.com/stianlars1/css-vars-assistant.git
+cd css-vars-assistant
+./gradlew clean buildPlugin       # produces ZIP under build/distributions
+./gradlew runIde                  # start sandbox IDE

@@ -1,6 +1,57 @@
 # CSS Variables Assistant **(--)** Changelog
 
 All notable changes to this project will be documented in this file.
+The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
+
+---
+
+## [1.3.0] – 2025-05-27
+### Added
+* **Dynamic pre-processor resolution** – fully resolves chained `@/ $/ --` references across LESS, SCSS, SASS & CSS, even inside imported packages.
+* **Import-cache** – remembers every file reached through `@import`, giving instant look-ups after the first index pass.
+* **🔄 Re-index Now** button – available in **Settings → Tools → CSS Variables Assistant**. Rebuilds the index without “Invalidate Caches / Restart”.
+* **Debug CSS Import Resolution** context-menu action – prints the exact chain of resolved `@import`s for the selected file.
+* **IDE progress integration** – all long-running tasks are cancellable (Progress Manager).
+
+### Changed
+* **New default maxImportDepth** ⇢ `10` (was `3`).  
+  Still user-configurable.
+* **Icons** – always use the plugin shield for variables originating from the assistant, regardless of scope.
+* **Scope utilities** – `ScopeUtil.effectiveCssIndexingScope()` and `currentPreprocessorScope()` consolidated; always compute a fresh scope for resolution paths.
+
+### Fixed
+* **Project + Imports scope** now resolves real values (e.g. `--ffe-farge-vann → #005aa4`) instead of showing the intermediate `@lessVar`.
+* Missing completions when switching from *Project Only* to *Project + Imports* without restarting.
+* Race condition that occasionally produced `ProcessCanceledException` in large projects.
+* Import-depth recursion guard respected across mixed preprocessor stacks.
+* Global scope no longer double-indexes the same node_modules files.
+
+---
+
+---
+
+## [1.3.0] – 2025-05-27
+### Added
+* **Dynamic pre-processor resolution** – fully resolves chained `@/ $/ --` references across LESS, SCSS, SASS & CSS, even inside imported packages.
+* **Import-cache** – remembers every file reached through `@import`, giving instant look-ups after the first index pass.
+* **🔄 Re-index Now** button – available in **Settings → Tools → CSS Variables Assistant**. Rebuilds the index without “Invalidate Caches / Restart”.
+* **Debug CSS Import Resolution** context-menu action – prints the exact chain of resolved `@import`s for the selected file.
+* **IDE progress integration** – all long-running tasks are cancellable (Progress Manager).
+
+### Changed
+* **New default maxImportDepth** ⇢ `10` (was `3`).  
+  Still user-configurable.
+* **Icons** – always use the plugin shield for variables originating from the assistant, regardless of scope.
+* **Scope utilities** – `ScopeUtil.effectiveCssIndexingScope()` and `currentPreprocessorScope()` consolidated; always compute a fresh scope for resolution paths.
+
+### Fixed
+* **Project + Imports scope** now resolves real values (e.g. `--ffe-farge-vann → #005aa4`) instead of showing the intermediate `@lessVar`.
+* Missing completions when switching from *Project Only* to *Project + Imports* without restarting.
+* Race condition that occasionally produced `ProcessCanceledException` in large projects.
+* Import-depth recursion guard respected across mixed preprocessor stacks.
+* Global scope no longer double-indexes the same node_modules files.
+
+---
 
 ## [1.2.0] – 2025‑05‑22
 ### Added

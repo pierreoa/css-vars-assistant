@@ -22,7 +22,7 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         var showContextValues: Boolean = true,
         var allowIdeCompletions: Boolean = true,
         var indexingScope: IndexingScope = IndexingScope.PROJECT_WITH_IMPORTS,
-        var maxImportDepth: Int = 3  // Prevent infinite recursion in @import chains
+        var maxImportDepth: Int = 10  // Prevent infinite recursion in @import chains
     )
 
     private var state = State()
@@ -61,7 +61,7 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         get() = indexingScope == IndexingScope.GLOBAL
 
     val shouldResolveImports: Boolean
-        get() = indexingScope == IndexingScope.PROJECT_WITH_IMPORTS
+        get() = indexingScope != IndexingScope.PROJECT_ONLY
 
     val isProjectScopeOnly: Boolean
         get() = indexingScope == IndexingScope.PROJECT_ONLY

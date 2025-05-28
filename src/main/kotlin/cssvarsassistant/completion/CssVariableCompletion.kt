@@ -4,12 +4,11 @@ import com.intellij.codeInsight.completion.*
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.css.CssFunction
-import com.intellij.psi.search.FilenameIndex
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import com.intellij.util.indexing.FileBasedIndex
@@ -19,15 +18,17 @@ import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
+import cssvarsassistant.util.PreprocessorUtil
+import cssvarsassistant.util.ScopeUtil
 import java.awt.Component
 import java.awt.Graphics
 import javax.swing.Icon
 
 class CssVariableCompletion : CompletionContributor() {
-    private val LOG = Logger.getInstance(CssVariableCompletion::class.java)
+    private val logger = Logger.getInstance(CssVariableCompletion::class.java)
     private val ENTRY_SEP = "|||"
-    private val LESS_VAR_PATTERN = Regex("""^@([\w-]+)$""")
     private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
+
 
     init {
         extend(
@@ -40,6 +41,9 @@ class CssVariableCompletion : CompletionContributor() {
                     result: CompletionResultSet
                 ) {
                     try {
+                        // Check for cancellation at the start
+                        ProgressManager.checkCanceled()
+
                         // Only inside var(...) args
                         val pos = params.position
                         val fn = PsiTreeUtil.getParentOfType(pos, CssFunction::class.java) ?: return
@@ -54,57 +58,71 @@ class CssVariableCompletion : CompletionContributor() {
                         val project = pos.project
                         val settings = CssVarsAssistantSettings.getInstance()
 
-                        val scope = when (settings.indexingScope) {
-                            CssVarsAssistantSettings.IndexingScope.GLOBAL -> GlobalSearchScope.allScope(project)
-                            else -> GlobalSearchScope.projectScope(project)
-                        }
+                        // FIXED: Use CSS indexing scope for FileBasedIndex operations
+                        val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
                         val processedVariables = mutableSetOf<String>()
 
-                        fun resolveVarValue(raw: String, visited: Set<String> = emptySet(), depth: Int = 0): String {
-                            if (depth > 5) return raw
+                        fun resolveVarValue(
+                            raw: String,
+                            visited: Set<String> = emptySet(),
+                            depth: Int = 0
+                        ): String {
+                            val resolveSettings = CssVarsAssistantSettings.getInstance()
+                            if (depth > resolveSettings.maxImportDepth) return raw
 
-                            // Handle var(--xyz) references
-                            val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
-                            if (varRef != null) {
-                                val ref = varRef.groupValues[1]
-                                if (ref in visited) return raw
+                            try {
+                                // Check for cancellation in recursive operations
+                                ProgressManager.checkCanceled()
 
-                                val refEntries = FileBasedIndex.getInstance()
-                                    .getValues(CssVariableIndex.NAME, ref, scope)
-                                    .flatMap { it.split(ENTRY_SEP) }
-                                    .distinct()
-                                    .filter { it.isNotBlank() }
+                                // ── 1. vanlige CSS var(..) ───────────────────────────────
+                                val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
+                                if (varRef != null) {
+                                    val ref = varRef.groupValues[1]
+                                    if (ref in visited) return raw
 
-                                val refDefault = refEntries
-                                    .mapNotNull {
-                                        val p = it.split(DELIMITER, limit = 3)
-                                        if (p.size >= 2) p[0] to p[1] else null
-                                    }
-                                    .let { pairs ->
-                                        pairs.find { it.first == "default" }?.second
-                                            ?: pairs.firstOrNull()?.second
-                                    }
+                                    val refEntries = FileBasedIndex.getInstance()
+                                        .getValues(CssVariableIndex.NAME, ref, cssScope)
+                                        .flatMap { it.split(ENTRY_SEP) }
+                                        .distinct()
+                                        .filter { it.isNotBlank() }
 
-                                if (refDefault != null)
-                                    return resolveVarValue(refDefault, visited + ref, depth + 1)
-                                else
+                                    val refDefault = refEntries
+                                        .mapNotNull {
+                                            val p = it.split(DELIMITER, limit = 3)
+                                            if (p.size >= 2) p[0] to p[1] else null
+                                        }
+                                        .let { pairs ->
+                                            pairs.find { it.first == "default" }?.second ?: pairs.firstOrNull()?.second
+                                        }
+
+                                    if (refDefault != null)
+                                        return resolveVarValue(refDefault, visited + ref, depth + 1)
                                     return raw
+                                }
+
+                                // ── 2. LESS / SCSS pre-prosessor-vars ────────────────────
+                                val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
+                                if (lessMatch != null) {
+                                    val varName = lessMatch.groupValues[1]
+                                    val cacheKey = Pair(project, varName)
+
+                                    // bruk cache bare når den inneholder et funn
+                                    lessVarCache[cacheKey]?.let { return it }
+
+                                    // FIXED: Always use fresh scope for preprocessor resolution
+                                    val resolved = findPreprocessorVariableValue(project, varName)
+                                    if (resolved != null) lessVarCache[cacheKey] = resolved
+                                    return resolved ?: raw
+                                }
+
+                                return raw
+                            } catch (e: ProcessCanceledException) {
+                                throw e // Always rethrow ProcessCanceledException
+                            } catch (e: Exception) {
+                                logger.warn("Failed to resolve variable value: $raw", e)
+                                return raw
                             }
-
-                            // Handle preprocessor variable references (LESS/SCSS)
-                            val lessVarMatch = LESS_VAR_PATTERN.find(raw.trim())
-                            if (lessVarMatch != null) {
-                                val varName = lessVarMatch.groupValues[1]
-                                val cacheKey = Pair(project, varName)
-                                lessVarCache[cacheKey]?.let { return it }
-
-                                val resolvedValue = findPreprocessorVariableValue(project, varName, scope)
-                                lessVarCache[cacheKey] = resolvedValue
-                                return resolvedValue ?: raw
-                            }
-
-                            return raw
                         }
 
                         data class Entry(
@@ -117,16 +135,23 @@ class CssVariableCompletion : CompletionContributor() {
                         )
 
                         val entries = mutableListOf<Entry>()
+
+                        // Check cancellation before expensive indexing operations
+                        ProgressManager.checkCanceled()
+
                         FileBasedIndex.getInstance()
                             .getAllKeys(CssVariableIndex.NAME, project)
                             .forEach { rawName ->
+                                // Check cancellation periodically in loops
+                                ProgressManager.checkCanceled()
+
                                 val display = rawName.removePrefix("--")
                                 if (!display.startsWith(simple, ignoreCase = true)) return@forEach
 
                                 processedVariables.add(rawName)
 
                                 val allVals = FileBasedIndex.getInstance()
-                                    .getValues(CssVariableIndex.NAME, rawName, scope)
+                                    .getValues(CssVariableIndex.NAME, rawName, cssScope)
                                     .flatMap { it.split(ENTRY_SEP) }
                                     .distinct()
                                     .filter { it.isNotBlank() }
@@ -170,6 +195,9 @@ class CssVariableCompletion : CompletionContributor() {
                         entries.sortBy { it.display }
 
                         for (e in entries) {
+                            // Check cancellation in completion generation loop
+                            ProgressManager.checkCanceled()
+
                             val short = e.doc.takeIf { it.isNotBlank() }
                                 ?.let { it.take(40) + if (it.length > 40) "…" else "" }
                                 ?: ""
@@ -181,8 +209,7 @@ class CssVariableCompletion : CompletionContributor() {
                             val icon: Icon = when {
                                 e.isAllColor && colorIcons.size == 2 -> DoubleColorIcon(colorIcons[0], colorIcons[1])
                                 e.isAllColor && colorIcons.isNotEmpty() -> colorIcons[0]
-                                isSizeValue(e.mainValue) -> AllIcons.FileTypes.Css
-                                else -> AllIcons.Nodes.Property
+                                else -> AllIcons.FileTypes.Css
                             }
 
                             val valueText = when {
@@ -194,10 +221,12 @@ class CssVariableCompletion : CompletionContributor() {
                                         }
                                     }
                                 }
+
                                 e.isAllColor -> e.mainValue
                                 e.allValues.size > 1 && settings.showContextValues -> {
                                     "${e.mainValue} (+${e.allValues.size - 1})"
                                 }
+
                                 else -> e.mainValue
                             }
 
@@ -209,7 +238,19 @@ class CssVariableCompletion : CompletionContributor() {
                                 .withTypeText(valueText, true)
                                 .withTailText(if (short.isNotBlank()) " — $short" else "", true)
                                 .withInsertHandler { ctx2, _ ->
-                                    ctx2.document.replaceString(ctx2.startOffset, ctx2.tailOffset, e.rawName)
+                                    try {
+                                        val doc = ctx2.document
+                                        val start = ctx2.startOffset
+                                        val tail = ctx2.tailOffset
+
+                                        // Validate range before replacement
+                                        if (start >= 0 && tail <= doc.textLength && start <= tail) {
+                                            doc.replaceString(start, tail, e.rawName)
+                                        }
+                                    } catch (ex: Exception) {
+                                        // Log but don't crash completion
+                                        logger.debug("Safe insert handler caught exception", ex)
+                                    }
                                 }
 
                             result.addElement(elt)
@@ -231,66 +272,47 @@ class CssVariableCompletion : CompletionContributor() {
                         } else {
                             result.stopHere()
                         }
-                    } catch (ex: Exception) {
-                        LOG.error("CSS var completion error", ex)
+                    } catch (e: ProcessCanceledException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.error("CSS var completion error", e)
                     }
                 }
             }
         )
     }
 
-    private fun findPreprocessorVariableValue(
-        project: Project,
-        varName: String,
-        scope: GlobalSearchScope
-    ): String? {
-        try {
-            val potentialFiles = mutableListOf<VirtualFile>()
-            val fileTypes = listOf(".less", ".scss", ".sass", ".css")
-
-            for (ext in fileTypes) {
-                for (commonName in listOf("variables", "vars", "theme", "colors", "spacing", "tokens")) {
-                    val files = FilenameIndex.getAllFilesByExt(project, ext, scope)
-
-                    files.filter { it.name.startsWith(commonName) }
-                        .forEach { psiFile -> potentialFiles.add(psiFile) }
-                }
-            }
-
-            for (file in potentialFiles) {
-                try {
-                    val content = String(file.contentsToByteArray())
-
-                    val lessPattern = Regex("""@${Regex.escape(varName)}:\s*([^;]+);""")
-                    lessPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val scssPattern = Regex("""\$${Regex.escape(varName)}:\s*([^;]+);""")
-                    scssPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-
-                    val cssVarPattern = Regex("""--${Regex.escape(varName)}:\s*([^;]+);""")
-                    cssVarPattern.find(content)?.let {
-                        return it.groupValues[1].trim()
-                    }
-                } catch (e: Exception) {
-                    LOG.debug("Error reading file ${file.path}", e)
-                }
-            }
-
-            return null
-        } catch (e: Exception) {
-            LOG.error("Error finding preprocessor variable value", e)
-            return null
+    // ───────────────── companion object ────────────────────────────────
+    companion object {
+        /**
+         * Used by the “Re-index variables now…” button to flush the
+         * in-memory cache so fresh values are re-resolved after an index
+         * rebuild.
+         */
+        @JvmStatic
+        fun clearCaches() {
+            // nothing heavy – just drop the map
+            CssVariableCompletion().lessVarCache.clear()
         }
     }
 
-    private fun isSizeValue(raw: String): Boolean {
-        return Regex("""^-?\d+(\.\d+)?(px|em|rem|ch|ex|vh|vw|vmin|vmax|%)$""", RegexOption.IGNORE_CASE)
-            .matches(raw.trim())
+    // FIXED: Always use fresh scope for preprocessor resolution
+    private fun findPreprocessorVariableValue(
+        project: Project,
+        varName: String
+    ): String? {
+        return try {
+            // Always compute fresh scope to see newly discovered imports
+            val freshScope = ScopeUtil.currentPreprocessorScope(project)
+            PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        } catch (e: ProcessCanceledException) {
+            throw e // Always rethrow ProcessCanceledException
+        } catch (e: Exception) {
+            logger.warn("Failed to find preprocessor variable: $varName", e)
+            null
+        }
     }
+
 }
 
 class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
