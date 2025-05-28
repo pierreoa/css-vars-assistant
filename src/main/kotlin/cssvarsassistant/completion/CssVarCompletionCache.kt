@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap
  * Cache key now includes scope hash to prevent stale values when scope changes.
  */
 object CssVarCompletionCache {
-    // FIXED: Cache key now includes scope to prevent stale values
     private val map = ConcurrentHashMap<Triple<Project, String, Int>, String?>()
 
     fun get(project: Project, name: String, scope: GlobalSearchScope): String? =
@@ -21,15 +20,12 @@ object CssVarCompletionCache {
 
     fun clear() = map.clear()
 
-    // Backward compatibility methods (will use current scope)
     fun get(project: Project, name: String): String? {
-        val settings = cssvarsassistant.settings.CssVarsAssistantSettings.getInstance()
         val currentScope = cssvarsassistant.util.ScopeUtil.currentPreprocessorScope(project)
         return get(project, name, currentScope)
     }
 
     fun put(project: Project, name: String, value: String?) {
-        val settings = cssvarsassistant.settings.CssVarsAssistantSettings.getInstance()
         val currentScope = cssvarsassistant.util.ScopeUtil.currentPreprocessorScope(project)
         put(project, name, currentScope, value)
     }
