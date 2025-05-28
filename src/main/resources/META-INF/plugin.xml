@@ -58,4 +58,15 @@
                 parentId="tools"
         />
     </extensions>
+
+    <actions>
+        <!-- Debug CSS Import Resolution Action -->
+        <action id="cssvarsassistant.debug.import.resolution"
+                class="cssvarsassistant.actions.DebugImportResolutionAction"
+                text="Debug CSS Import Resolution"
+                description="Print the full import chain and resolution path for this CSS file">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="$Delete"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
 </idea-plugin>

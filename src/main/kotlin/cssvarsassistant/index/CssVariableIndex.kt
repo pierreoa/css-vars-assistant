@@ -16,16 +16,12 @@ import java.io.DataOutput
 const val DELIMITER = "\u001F"
 private const val ENTRY_SEP = "|||"
 
+val CSS_VARIABLE_INDEXER_NAME = ID.create<String, String>("cssvarsassistant.index")
+
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
-    companion object {
-        val NAME = ID.create<String, String>("cssvarsassistant.index")
 
-        fun forceRebuild() = FileBasedIndex.getInstance()
-            .requestRebuild(NAME)
-    }
-
-    override fun getName(): ID<String, String> = NAME
-    override fun getVersion(): Int = 36  // Increment due to import resolution changes
+    override fun getName(): ID<String, String> = CSS_VARIABLE_INDEXER_NAME
+    override fun getVersion(): Int = 48  // Increment due to import resolution changes
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
         val registry = FileTypeRegistry.getInstance()
@@ -212,3 +208,4 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
             override fun read(`in`: DataInput): String = IOUtil.readUTF(`in`)
         }
 }
+

@@ -7,6 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.css.CssFunction
 import com.intellij.psi.util.PsiTreeUtil
@@ -14,7 +15,7 @@ import com.intellij.util.ProcessingContext
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
-import cssvarsassistant.index.CssVariableIndex
+import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
@@ -24,10 +25,44 @@ import java.awt.Component
 import java.awt.Graphics
 import javax.swing.Icon
 
+
 class CssVariableCompletion : CompletionContributor() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
     private val ENTRY_SEP = "|||"
-    private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
+
+    data class Entry(
+        val rawName: String,
+        val display: String,
+        val mainValue: String,
+        val allValues: List<Pair<String, String>>,
+        val doc: String,
+        val isAllColor: Boolean
+    )
+
+    companion object {
+        private const val WIDTH_THRESHOLD = 50
+        private const val PIXELS_PER_CHAR = 8
+        private const val MIN_POPUP_WIDTH = 500
+        private const val MAX_POPUP_WIDTH = 1100
+    }
+
+
+    // FIXED: Always use fresh scope for preprocessor resolution
+    private fun findPreprocessorVariableValue(
+        project: Project,
+        varName: String
+    ): String? {
+        return try {
+            // Always compute fresh scope to see newly discovered imports
+            val freshScope = ScopeUtil.currentPreprocessorScope(project)
+            PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        } catch (e: ProcessCanceledException) {
+            throw e // Always rethrow ProcessCanceledException
+        } catch (e: Exception) {
+            logger.warn("Failed to find preprocessor variable: $varName", e)
+            null
+        }
+    }
 
 
     init {
@@ -61,6 +96,7 @@ class CssVariableCompletion : CompletionContributor() {
                         // FIXED: Use CSS indexing scope for FileBasedIndex operations
                         val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
+
                         val processedVariables = mutableSetOf<String>()
 
                         fun resolveVarValue(
@@ -82,7 +118,7 @@ class CssVariableCompletion : CompletionContributor() {
                                     if (ref in visited) return raw
 
                                     val refEntries = FileBasedIndex.getInstance()
-                                        .getValues(CssVariableIndex.NAME, ref, cssScope)
+                                        .getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
                                         .flatMap { it.split(ENTRY_SEP) }
                                         .distinct()
                                         .filter { it.isNotBlank() }
@@ -105,15 +141,15 @@ class CssVariableCompletion : CompletionContributor() {
                                 val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
                                 if (lessMatch != null) {
                                     val varName = lessMatch.groupValues[1]
-                                    val cacheKey = Pair(project, varName)
+                                    CssVarCompletionCache.get(project, varName)?.let { return it }
 
-                                    // bruk cache bare når den inneholder et funn
-                                    lessVarCache[cacheKey]?.let { return it }
+                                    CssVarCompletionCache.get(project, varName)?.let { return it }
 
-                                    // FIXED: Always use fresh scope for preprocessor resolution
                                     val resolved = findPreprocessorVariableValue(project, varName)
-                                    if (resolved != null) lessVarCache[cacheKey] = resolved
+                                    CssVarCompletionCache.put(project, varName, resolved)
+
                                     return resolved ?: raw
+
                                 }
 
                                 return raw
@@ -125,22 +161,13 @@ class CssVariableCompletion : CompletionContributor() {
                             }
                         }
 
-                        data class Entry(
-                            val rawName: String,
-                            val display: String,
-                            val mainValue: String,
-                            val allValues: List<Pair<String, String>>,
-                            val doc: String,
-                            val isAllColor: Boolean
-                        )
-
                         val entries = mutableListOf<Entry>()
 
                         // Check cancellation before expensive indexing operations
                         ProgressManager.checkCanceled()
 
                         FileBasedIndex.getInstance()
-                            .getAllKeys(CssVariableIndex.NAME, project)
+                            .getAllKeys(CSS_VARIABLE_INDEXER_NAME, project)
                             .forEach { rawName ->
                                 // Check cancellation periodically in loops
                                 ProgressManager.checkCanceled()
@@ -151,7 +178,7 @@ class CssVariableCompletion : CompletionContributor() {
                                 processedVariables.add(rawName)
 
                                 val allVals = FileBasedIndex.getInstance()
-                                    .getValues(CssVariableIndex.NAME, rawName, cssScope)
+                                    .getValues(CSS_VARIABLE_INDEXER_NAME, rawName, cssScope)
                                     .flatMap { it.split(ENTRY_SEP) }
                                     .distinct()
                                     .filter { it.isNotBlank() }
@@ -193,6 +220,16 @@ class CssVariableCompletion : CompletionContributor() {
                             }
 
                         entries.sortBy { it.display }
+
+                        /* 1️⃣  ── compute an upper-bound width BEFORE the popup is created ───────── */
+                        val longestName = FileBasedIndex.getInstance()
+                            .getAllKeys(CSS_VARIABLE_INDEXER_NAME, project)
+                            .maxOfOrNull { it.length } ?: 0
+                        val newWidth = (longestName * PIXELS_PER_CHAR)
+                            .coerceIn(MIN_POPUP_WIDTH, MAX_POPUP_WIDTH)
+
+                        // will only update if it’s higher than the current value
+                        Registry.get("ide.completion.max.width").setValue(newWidth)
 
                         for (e in entries) {
                             // Check cancellation in completion generation loop
@@ -253,6 +290,8 @@ class CssVariableCompletion : CompletionContributor() {
                                     }
                                 }
 
+
+
                             result.addElement(elt)
                         }
 
@@ -282,36 +321,6 @@ class CssVariableCompletion : CompletionContributor() {
         )
     }
 
-    // ───────────────── companion object ────────────────────────────────
-    companion object {
-        /**
-         * Used by the “Re-index variables now…” button to flush the
-         * in-memory cache so fresh values are re-resolved after an index
-         * rebuild.
-         */
-        @JvmStatic
-        fun clearCaches() {
-            // nothing heavy – just drop the map
-            CssVariableCompletion().lessVarCache.clear()
-        }
-    }
-
-    // FIXED: Always use fresh scope for preprocessor resolution
-    private fun findPreprocessorVariableValue(
-        project: Project,
-        varName: String
-    ): String? {
-        return try {
-            // Always compute fresh scope to see newly discovered imports
-            val freshScope = ScopeUtil.currentPreprocessorScope(project)
-            PreprocessorUtil.resolveVariable(project, varName, freshScope)
-        } catch (e: ProcessCanceledException) {
-            throw e // Always rethrow ProcessCanceledException
-        } catch (e: Exception) {
-            logger.warn("Failed to find preprocessor variable: $varName", e)
-            null
-        }
-    }
 
 }
 

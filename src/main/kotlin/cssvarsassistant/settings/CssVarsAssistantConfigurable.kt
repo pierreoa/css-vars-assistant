@@ -8,7 +8,8 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.util.ui.JBUI
-import cssvarsassistant.completion.CssVariableCompletion
+import cssvarsassistant.completion.CssVarCompletionCache
+import cssvarsassistant.completion.CssVariableIndexRebuilder
 import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.ImportCache
 import cssvarsassistant.util.PreprocessorUtil
@@ -39,43 +40,87 @@ class CssVarsAssistantConfigurable : Configurable {
     )
 
     private val maxImportDepthSpinner = JSpinner(SpinnerNumberModel(settings.maxImportDepth, 1, 10, 1))
+// Enhanced re-index button implementation
+// Replace the existing reindexButton ActionListener in CssVarsAssistantConfigurable.kt
+
     private val reindexButton = JButton("Re-index variables now…").apply {
         toolTipText = "Flush caches and rebuild the CSS variable index"
 
         addActionListener {
-            isEnabled = false                             // disable while we queue the job
+            isEnabled = false
 
-            // use IntelliJ’s background-task API so the user sees progress
             val project = ProjectManager.getInstance().openProjects.firstOrNull()
                 ?: return@addActionListener.also { isEnabled = true }
 
+            // Show immediate feedback
+            NotificationGroupManager.getInstance()
+                .getNotificationGroup("CSS Vars Assistant")
+                .createNotification(
+                    "Starting CSS variable index rebuild...",
+                    NotificationType.INFORMATION
+                )
+                .notify(project)
+
             ProgressManager.getInstance()
-                .run(object : Task.Backgroundable(project, "Re-indexing CSS variables…") {
+                .run(object : Task.Backgroundable(project, "Rebuilding CSS Variables Index") {
                     override fun run(indicator: ProgressIndicator) {
-                        indicator.isIndeterminate = true
+                        indicator.isIndeterminate = false
+                        indicator.fraction = 0.0
 
-                        // 1) purge all runtime caches --------------------------------
-                        ImportCache.get(project).clear(project)
-                        PreprocessorUtil.clearCache()
-                        CssVariableCompletion.clearCaches()     // add this helper in the class
-                        // 2) ask IntelliJ to rebuild our file-based index -----------
-                        CssVariableIndex.forceRebuild()
+                        try {
+                            indicator.text = "Clearing import cache..."
+                            indicator.fraction = 0.1
+                            ImportCache.get(project).clear(project)
+                            Thread.sleep(200) // Small delay for visual feedback
 
-                        // 3) notify the user ----------------------------------------
+                            indicator.text = "Clearing preprocessor cache..."
+                            indicator.fraction = 0.3
+                            PreprocessorUtil.clearCache()
+                            Thread.sleep(200)
+
+                            indicator.text = "Clearing completion cache..."
+                            indicator.fraction = 0.5
+                            CssVarCompletionCache.clearCaches()
+                            Thread.sleep(200)
+
+
+                            indicator.text = "Requesting index rebuild..."
+                            indicator.fraction = 0.7
+                            CssVariableIndexRebuilder.forceRebuild()
+
+                            indicator.text = "Finalizing rebuild..."
+                            indicator.fraction = 0.9
+
+                            // Wait a bit to see if IntelliJ's indexing kicks in
+                            Thread.sleep(1000)
+                            indicator.fraction = 1.0
+
+                        } catch (e: Exception) {
+                            NotificationGroupManager.getInstance()
+                                .getNotificationGroup("CSS Vars Assistant")
+                                .createNotification(
+                                    "Error during index rebuild: ${e.message}",
+                                    NotificationType.ERROR
+                                )
+                                .notify(project)
+                        }
+                    }
+
+                    override fun onSuccess() {
                         NotificationGroupManager.getInstance()
                             .getNotificationGroup("CSS Vars Assistant")
                             .createNotification(
-                                "CSS variable index scheduled for rebuild.",
+                                "CSS variable index rebuild completed successfully",
                                 NotificationType.INFORMATION
                             )
                             .notify(project)
                     }
 
                     override fun onFinished() {
-                        // re-enable the button on EDT when background task ends
                         SwingUtilities.invokeLater { isEnabled = true }
                     }
                 })
+
         }
     }
 

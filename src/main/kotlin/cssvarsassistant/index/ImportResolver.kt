@@ -11,6 +11,7 @@ object ImportResolver {
     private val IMPORT_PATTERN =
         Regex("""@import\s+(?:"([^"]+)"|'([^']+)'|\burl\(\s*(?:"([^"]+)"|'([^']+)'|([^)]+))\s*\))""")
 
+
     /**
      * Resolves @import statements in a CSS file and returns a set of VirtualFiles
      * that should be indexed based on the current settings.

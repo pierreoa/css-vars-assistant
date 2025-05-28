@@ -2,10 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
-
 ---
 
-## [1.3.0] – 2025-05-27
+## [1.3.1] – 2025-05-27
 ### Added
 * **Dynamic pre-processor resolution** – fully resolves chained `@/ $/ --` references across LESS, SCSS, SASS & CSS, even inside imported packages.
 * **Import-cache** – remembers every file reached through `@import`, giving instant look-ups after the first index pass.
@@ -20,7 +19,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 * **Scope utilities** – `ScopeUtil.effectiveCssIndexingScope()` and `currentPreprocessorScope()` consolidated; always compute a fresh scope for resolution paths.
 
 ### Fixed
-* **Project + Imports scope** now resolves real values (e.g. `--ffe-farge-vann → #005aa4`) instead of showing the intermediate `@lessVar`.
+* **Project + Imports scope** now resolves real values (e.g. `--theme-primary → #1a73e8`) instead of showing intermediate preprocessor variables like `@primaryBlue`.
 * Missing completions when switching from *Project Only* to *Project + Imports* without restarting.
 * Race condition that occasionally produced `ProcessCanceledException` in large projects.
 * Import-depth recursion guard respected across mixed preprocessor stacks.

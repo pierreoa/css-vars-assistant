@@ -10,8 +10,8 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVariableCompletion
-import cssvarsassistant.index.CssVariableIndex
 import cssvarsassistant.index.DELIMITER
+import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
@@ -35,7 +35,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             // FIXED: Use CSS indexing scope for FileBasedIndex operations
             val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
-            val rawEntries = FileBasedIndex.getInstance().getValues(CssVariableIndex.NAME, varName, cssScope)
+            val rawEntries = FileBasedIndex.getInstance().getValues(CSS_VARIABLE_INDEXER_NAME, varName, cssScope)
                 .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
 
             if (rawEntries.isEmpty()) return null
@@ -144,7 +144,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                     // Use CSS indexing scope for FileBasedIndex operations
                     val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
                     val entries = FileBasedIndex.getInstance()
-                        .getValues(CssVariableIndex.NAME, ref, cssScope)
+                        .getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
                         .flatMap { it.split(ENTRY_SEP) }
                         .filter { it.isNotBlank() }
 
