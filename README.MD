@@ -1,14 +1,22 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.3.1  
++**Version:** 1.4.0
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**  
 **Author:** Stian Larsen ([GitHub](https://github.com/stianlars1))
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
 
 ---
+## ✨ What's new in 1.4.0
 
-## ✨ What's new in 1.3.1
+| Category | Highlights                                                                                                                               |
+|----------|------------------------------------------------------------------------------------------------------------------------------------------|
+| **🌍 Global by default** | Plugin now indexes <code>node_modules</code> automatically – variables from external design-system packages resolve without extra setup. |
+| **🧮 Smarter arithmetic** | LESS arithmetic (e.g. <code>@var: (@base * 3)</code>) is evaluated, so completion & docs show the final numeric value.                   |
+| **🔄 Seamless migration** | Your previous scope choice is preserved; only new projects start with the global scope.                                                  |
+---
+
+### Previous highlights from 1.3.1
 
 | Category | Highlights |
 |----------|------------|
@@ -47,13 +55,13 @@ See full details in [`CHANGELOG.MD`](./CHANGELOG.MD).
 
 Open **Settings → Tools → CSS Variables Assistant**
 
-| Option | Effect |
-|--------|--------|
+| Option | Effect                                                             |
+|--------|--------------------------------------------------------------------|
 | **Indexing scope** | *Project only* • *Project + imports* (recommended) • *Full global* |
-| **Max @import depth** | 1 – 10 (default 10) |
-| **Show context values** | Display dark/light & media-query variants |
-| **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses |
-| **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately |
+| **Max @import depth** | 1 – 20 (default 20)                                                |
+| **Show context values** | Display dark/light & media-query variants                          |
+| **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses                       |
+| **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately            |
 
 ---
 

@@ -8,6 +8,21 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 ---
 
+## [1.4.0] – 2025‑06‑02
+### Changed
+* **New defaults:** indexing scope now defaults to **GLOBAL** and **maxImportDepth** is **20** (was 10).
+* Legacy settings are clamped to the new 1–20 range on load.
+* Settings dialog pre‑selects **Global scope** on first run.
+
+### Fixed
+* LESS/SCSS alias chains ending in arithmetic expressions now resolve to their literal values (e.g. `--less-variable-spacing--md → 24px` not `--less-variable-spacing--md → @less-variable-spacing-md`).
+* Minor NPEs in completion popup when evaluating invalid pre‑processor refs.
+
+### Migration notes
+Existing users keep their previous scope; switch manually via **Settings → Tools → CSS Variables Assistant** or hit **Reset to Defaults** to adopt the new behaviour.
+
+---
+
 ## [1.3.1] – 2025-05-28
 ### Added
 * **Enhanced Debug CSS Import Resolution** action – comprehensive import chain analysis with tree visualization, variable counting, and detailed resolution paths.
