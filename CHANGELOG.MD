@@ -2,10 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
-# CSS Variables Assistant **(--)** Changelog
 
-All notable changes to this project will be documented in this file.
-The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 ---
 
 ## [1.4.0] – 2025‑06‑02
