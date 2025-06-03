@@ -1,8 +1,8 @@
 # CSS Variables Assistant  🔧🎨
 
 **Version:** 1.4.0<br/>
-**Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**,
-**Author:** Stian Larsen ([GitHub](https://github.com/stianlars1), [official website](https://www.css-variables-assistant.dev), [stians's website](https://stianlarsen.com))
+**Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
+**Author:** Stian Larsen ([GitHub](https://github.com/stianlars1), [official website](https://www.css-variables-assistant.dev), [stians's website](https://stianlarsen.com))<br/>
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
 
