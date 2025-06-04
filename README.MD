@@ -2,7 +2,13 @@
 
 **Version:** 1.4.0<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
-**Author:** Stian Larsen ([GitHub](https://github.com/stianlars1), [official website](https://www.css-variables-assistant.dev), [stians's website](https://stianlarsen.com))<br/>
+**Author:** Stian Larsen<br/>
+**Links:** 
+- [Official Plugin Website](https://www.css-variables-assistant.dev)
+- [Official JetBrains Marketplace page](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant)
+- [Stian Larsen](https://stianlarsen.com)
+
+
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
 
