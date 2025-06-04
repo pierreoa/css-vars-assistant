@@ -6,8 +6,6 @@
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
 
-<iframe width="384px" height="319px" src="https://plugins.jetbrains.com/embeddable/card/27392"></iframe>
-
 ---
 ## ✨ What's new in 1.4.0
 
