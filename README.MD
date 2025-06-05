@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.4.0<br/>
+**Version:** 1.4.1<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
 **Author:** Stian Larsen<br/>
 **Links:** 
@@ -11,6 +11,13 @@
 
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
+
+---
+## ✨ What's new in 1.4.1
+
+| Category | Highlights |
+|----------|------------|
+| **⚡ Faster completions** | CSS variable names are cached per project to avoid repeated index lookups. Caches clear automatically on index rebuild. |
 
 ---
 ## ✨ What's new in 1.4.0

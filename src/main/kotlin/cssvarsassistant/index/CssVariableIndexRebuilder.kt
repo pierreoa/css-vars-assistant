@@ -1,4 +1,4 @@
-package cssvarsassistant.completion
+package cssvarsassistant.index
 
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
