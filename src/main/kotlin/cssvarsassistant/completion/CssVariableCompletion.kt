@@ -17,6 +17,7 @@ import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
+import cssvarsassistant.completion.CssVarKeyCache
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
@@ -170,8 +171,8 @@ class CssVariableCompletion : CompletionContributor() {
                         // Check cancellation before expensive indexing operations
                         ProgressManager.checkCanceled()
 
-                        FileBasedIndex.getInstance()
-                            .getAllKeys(CSS_VARIABLE_INDEXER_NAME, project)
+                        val keyCache = CssVarKeyCache.get(project)
+                        keyCache.getKeys()
                             .forEach { rawName ->
                                 // Check cancellation periodically in loops
                                 ProgressManager.checkCanceled()

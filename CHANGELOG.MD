@@ -5,6 +5,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 
 ---
 
+## [1.4.1] – 2025‑06‑05
+### Improved
+* Completion suggestions load faster with a project-level cache of variable names.
+  The cache is cleared whenever the index is rebuilt.
+
+---
+
 ## [1.4.0] – 2025‑06‑02
 ### Changed
 * **New defaults:** indexing scope now defaults to **GLOBAL** and **maxImportDepth** is **20** (was 10).

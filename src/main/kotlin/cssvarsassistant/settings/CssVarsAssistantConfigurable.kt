@@ -9,7 +9,7 @@ import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.util.ui.JBUI
 import cssvarsassistant.completion.CssVarCompletionCache
-import cssvarsassistant.completion.CssVariableIndexRebuilder
+import cssvarsassistant.index.CssVariableIndexRebuilder
 import cssvarsassistant.index.ImportCache
 import cssvarsassistant.util.PreprocessorUtil
 import java.awt.GridBagConstraints
