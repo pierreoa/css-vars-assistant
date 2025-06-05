@@ -66,27 +66,12 @@ intellijPlatform {
         }
 
         changeNotes = """
-<h2>1.4.0 – 2025-06-02</h2>
+<h2>1.4.1 – 2025-06-05</h2>
 
-<h3>Added</h3>
+<h3>Improved</h3>
 <ul>
-  <li><strong>Global scope by default</strong> - the assistant now indexes <code>node_modules</code> out of the box, so external design-system variables resolve automatically.</li>
-  <li><strong>LESS arithmetic evaluation</strong> - expressions such as <code>@lessVar-spacing-md - (@lessVar-spacing * 3)</code> are calculated (e.g. <code>24px</code>) in both completion and quick-docs.</li>
-  <li><strong>One-time settings migrator</strong> - keeps the previous scope for existing users while new projects start with the global scope.</li>
+  <li><strong>Faster completion load</strong> - Completion suggestions load faster with a project-level cache of variable names. The cache is cleared whenever the index is rebuilt.</li>
 </ul>
-
-<h3>Changed</h3>
-<ul>
-  <li>File-based index version bumped to <code>95</code> - a safe re-index is triggered automatically after upgrade.</li>
-  <li>Internal cache - import-resolution tweaks improve performance on large monorepos.</li>
-</ul>
-
-<h3>Fixed</h3>
-<ul>
-  <li>Completion and documentation no longer show raw aliases like <code>@lessVar-spacing-md</code> - they always display the final literal value.</li>
-  <li>Stability improvements for deep import chains and long-running background indexing tasks.</li>
-</ul>
-
 """.trimIndent()
 
 
