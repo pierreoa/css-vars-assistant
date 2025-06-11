@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.4.1"
+version = "1.4.2"
 
 
 
@@ -66,11 +66,11 @@ intellijPlatform {
         }
 
         changeNotes = """
-<h2>1.4.1 – 2025-06-05</h2>
+<h2>1.4.2 – 2025-06-11</h2>
 
 <h3>Improved</h3>
 <ul>
-  <li><strong>Faster completion load</strong> - Completion suggestions load faster with a project-level cache of variable names. The cache is cleared whenever the index is rebuilt.</li>
+  <li><strong>Fixes.....</strong> - .</li>
 </ul>
 """.trimIndent()
 

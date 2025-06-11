@@ -17,7 +17,6 @@ import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
-import cssvarsassistant.completion.CssVarKeyCache
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
@@ -25,7 +24,6 @@ import cssvarsassistant.util.ScopeUtil
 import java.awt.Component
 import java.awt.Graphics
 import javax.swing.Icon
-
 
 class CssVariableCompletion : CompletionContributor() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
@@ -40,34 +38,6 @@ class CssVariableCompletion : CompletionContributor() {
         val isAllColor: Boolean
     )
 
-    companion object {
-        private const val WIDTH_THRESHOLD = 50
-        private const val PIXELS_PER_CHAR = 8
-        private const val MIN_POPUP_WIDTH = 500
-        private const val MAX_POPUP_WIDTH = 1100
-
-
-    }
-
-
-    // FIXED: Always use fresh scope for preprocessor resolution
-    private fun findPreprocessorVariableValue(
-        project: Project,
-        varName: String
-    ): String? {
-        return try {
-            // Always compute fresh scope to see newly discovered imports
-            val freshScope = ScopeUtil.currentPreprocessorScope(project)
-            PreprocessorUtil.resolveVariable(project, varName, freshScope)
-        } catch (e: ProcessCanceledException) {
-            throw e // Always rethrow ProcessCanceledException
-        } catch (e: Exception) {
-            logger.warn("Failed to find preprocessor variable: $varName", e)
-            null
-        }
-    }
-
-
     init {
         extend(
             CompletionType.BASIC,
@@ -78,29 +48,31 @@ class CssVariableCompletion : CompletionContributor() {
                     ctx: ProcessingContext,
                     result: CompletionResultSet
                 ) {
+                    val startTime = System.currentTimeMillis()
+
                     try {
                         val project = params.position.project
                         if (DumbService.isDumb(project)) return
 
-                        // Check for cancellation at the start
                         ProgressManager.checkCanceled()
 
-                        // Only inside var(...) args
-                        val pos = params.position
-                        val fn = PsiTreeUtil.getParentOfType(pos, CssFunction::class.java) ?: return
-                        if (fn.name != "var") return
-                        val l = fn.lParenthesis?.textOffset ?: return
-                        val r = fn.rParenthesis?.textOffset ?: return
-                        val off = params.offset
-                        if (off <= l || off > r) return
+                        // 🚀 AGGRESSIVE VAR() DETECTION - Text-based first!
+                        if (!isInsideVarFunction(params)) {
+                            logger.debug("❌ Not inside var() function")
+                            return
+                        }
 
-                        val rawPref = result.prefixMatcher.prefix
+                        logger.debug("✅ CSS Variable completion triggered")
+
+                        // Extract prefix more reliably
+                        val rawPref = extractVarPrefix(params)
                         val simple = rawPref.removePrefix("--")
+                        logger.debug("Extracted prefix: '$rawPref' -> '$simple'")
+
                         val settings = CssVarsAssistantSettings.getInstance()
 
-                        // FIXED: Use CSS indexing scope for FileBasedIndex operations
+                        // Use existing scoping logic
                         val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
-
 
                         val processedVariables = mutableSetOf<String>()
 
@@ -113,10 +85,9 @@ class CssVariableCompletion : CompletionContributor() {
                             if (depth > resolveSettings.maxImportDepth) return raw
 
                             try {
-                                // Check for cancellation in recursive operations
                                 ProgressManager.checkCanceled()
 
-                                // ── 1. vanlige CSS var(..) ───────────────────────────────
+                                // CSS var(..) resolution
                                 val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
                                 if (varRef != null) {
                                     val ref = varRef.groupValues[1]
@@ -142,7 +113,7 @@ class CssVariableCompletion : CompletionContributor() {
                                     return raw
                                 }
 
-                                // ── 2. LESS / SCSS pre-prosessor-vars ────────────────────
+                                // LESS/SCSS preprocessor variables
                                 val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
                                 if (lessMatch != null) {
                                     val varName = lessMatch.groupValues[1]
@@ -152,14 +123,12 @@ class CssVariableCompletion : CompletionContributor() {
                                     if (resolved != null) {
                                         CssVarCompletionCache.put(project, varName, resolved)
                                     }
-
                                     return resolved ?: raw
-
                                 }
 
                                 return raw
                             } catch (e: ProcessCanceledException) {
-                                throw e // Always rethrow ProcessCanceledException
+                                throw e
                             } catch (e: Exception) {
                                 logger.warn("Failed to resolve variable value: $raw", e)
                                 return raw
@@ -168,13 +137,12 @@ class CssVariableCompletion : CompletionContributor() {
 
                         val entries = mutableListOf<Entry>()
 
-                        // Check cancellation before expensive indexing operations
                         ProgressManager.checkCanceled()
 
+                        // Use existing CssVarKeyCache
                         val keyCache = CssVarKeyCache.get(project)
                         keyCache.getKeys()
                             .forEach { rawName ->
-                                // Check cancellation periodically in loops
                                 ProgressManager.checkCanceled()
 
                                 val display = rawName.removePrefix("--")
@@ -206,9 +174,11 @@ class CssVariableCompletion : CompletionContributor() {
                                 val mainValue = uniqueValuePairs.find { it.first == "default" }?.second
                                     ?: values.first()
 
-                                val docEntry = allVals.firstOrNull { it.substringAfter(DELIMITER).isNotBlank() }
+                                val docEntry = allVals.firstOrNull {
+                                    it.substringAfter(DELIMITER).substringAfter(DELIMITER).isNotBlank()
+                                }
                                     ?: allVals.first()
-                                val commentTxt = docEntry.substringAfter(DELIMITER)
+                                val commentTxt = docEntry.split(DELIMITER).getOrNull(2) ?: ""
                                 val doc = DocParser.parse(commentTxt, mainValue).description
 
                                 val isAllColor =
@@ -227,7 +197,6 @@ class CssVariableCompletion : CompletionContributor() {
                         entries.sortBy { it.display }
 
                         for (e in entries) {
-                            // Check cancellation in completion generation loop
                             ProgressManager.checkCanceled()
 
                             val short = e.doc.takeIf { it.isNotBlank() }
@@ -275,37 +244,23 @@ class CssVariableCompletion : CompletionContributor() {
                                         val start = ctx2.startOffset
                                         val tail = ctx2.tailOffset
 
-                                        // Validate range before replacement
                                         if (start >= 0 && tail <= doc.textLength && start <= tail) {
                                             doc.replaceString(start, tail, e.rawName)
                                         }
                                     } catch (ex: Exception) {
-                                        // Log but don't crash completion
                                         logger.debug("Safe insert handler caught exception", ex)
                                     }
                                 }
 
-
-
                             result.addElement(elt)
                         }
 
-                        if (settings.allowIdeCompletions) {
-                            if (processedVariables.isNotEmpty()) {
-                                val filteredResult = result.withPrefixMatcher(object : PrefixMatcher(rawPref) {
-                                    override fun prefixMatches(name: String): Boolean {
-                                        return processedVariables.contains(name)
-                                    }
+                        // Always stop IDE completions when in var() context
+                        result.stopHere()
 
-                                    override fun cloneWithPrefix(prefix: String): PrefixMatcher {
-                                        return this
-                                    }
-                                })
-                                filteredResult.stopHere()
-                            }
-                        } else {
-                            result.stopHere()
-                        }
+                        val endTime = System.currentTimeMillis()
+                        logger.info("CSS Variable completion took ${endTime - startTime}ms for ${entries.size} entries")
+
                     } catch (e: ProcessCanceledException) {
                         throw e
                     } catch (e: Exception) {
@@ -316,7 +271,135 @@ class CssVariableCompletion : CompletionContributor() {
         )
     }
 
+    /**
+     * 🚀 ROBUST VAR() DETECTION - Text-based analysis that works during typing
+     */
+    private fun isInsideVarFunction(params: CompletionParameters): Boolean {
+        val offset = params.offset
+        val document = params.editor?.document ?: return false
+        val text = document.text
 
+        try {
+            // Strategy 1: Check current line for var( pattern
+            val lineNumber = document.getLineNumber(offset)
+            val lineStart = document.getLineStartOffset(lineNumber)
+            val lineEnd = document.getLineEndOffset(lineNumber)
+            val lineText = text.substring(lineStart, lineEnd)
+            val positionInLine = offset - lineStart
+
+            logger.debug("Line analysis: '$lineText' at position $positionInLine")
+
+            // Find all var( patterns in current line
+            val varPattern = Regex("""var\s*\(""")
+            val matches = varPattern.findAll(lineText).toList()
+
+            for (match in matches) {
+                val varOpenParenPos = match.range.last
+
+                // Check if cursor is after this var(
+                if (positionInLine > varOpenParenPos) {
+                    // Look for closing ) after cursor position
+                    val remainingText = lineText.substring(positionInLine)
+                    val closingParenIndex = remainingText.indexOf(')')
+
+                    if (closingParenIndex == -1) {
+                        // No closing paren found - definitely inside
+                        logger.debug("✅ Found var( without closing paren")
+                        return true
+                    } else {
+                        // Found closing paren - we're inside if cursor is before it
+                        logger.debug("✅ Found var( with closing paren at ${positionInLine + closingParenIndex}")
+                        return true
+                    }
+                }
+            }
+
+            // Strategy 2: Broader search around cursor
+            val searchStart = maxOf(0, offset - 100)
+            val searchEnd = minOf(text.length, offset + 20)
+            val searchText = text.substring(searchStart, searchEnd)
+            val cursorInSearch = offset - searchStart
+
+            logger.debug("Broader search: '${searchText.replace('\n', '↵')}' cursor at $cursorInSearch")
+
+            val nearbyMatches = varPattern.findAll(searchText).toList()
+            for (match in nearbyMatches) {
+                val varOpenParenPos = match.range.last
+
+                if (cursorInSearch > varOpenParenPos) {
+                    val afterVarText = searchText.substring(varOpenParenPos + 1)
+                    val closingParenIndex = afterVarText.indexOf(')')
+
+                    if (closingParenIndex == -1 || cursorInSearch <= varOpenParenPos + 1 + closingParenIndex) {
+                        logger.debug("✅ Found var( in broader search")
+                        return true
+                    }
+                }
+            }
+
+            // Strategy 3: PSI fallback (for complete structures)
+            val pos = params.position
+            val fn = PsiTreeUtil.getParentOfType(pos, CssFunction::class.java)
+            if (fn?.name == "var") {
+                val l = fn.lParenthesis?.textOffset
+                val r = fn.rParenthesis?.textOffset
+                if (l != null && (r == null || (offset > l && offset <= r))) {
+                    logger.debug("✅ PSI detection success")
+                    return true
+                }
+            }
+
+            logger.debug("❌ No var() context detected")
+            return false
+
+        } catch (e: Exception) {
+            logger.debug("Error in var detection: ${e.message}")
+            return false
+        }
+    }
+
+    /**
+     * Extract the current prefix being typed inside var()
+     */
+    private fun extractVarPrefix(params: CompletionParameters): String {
+        val offset = params.offset
+        val document = params.editor?.document ?: return ""
+        val text = document.text
+
+        try {
+            // Find the most recent var( before cursor
+            val searchStart = maxOf(0, offset - 200)
+            val searchText = text.substring(searchStart, offset)
+
+            val varPattern = Regex("""var\s*\(""")
+            val matches = varPattern.findAll(searchText).toList()
+
+            if (matches.isNotEmpty()) {
+                val lastMatch = matches.last()
+                val varStart = searchStart + lastMatch.range.last + 1 // Position after var(
+                val prefix = text.substring(varStart, offset).trim()
+                logger.debug("Extracted prefix: '$prefix'")
+                return prefix
+            }
+
+            return ""
+        } catch (e: Exception) {
+            logger.debug("Error extracting prefix: ${e.message}")
+            return ""
+        }
+    }
+
+    private fun findPreprocessorVariableValue(project: Project, varName: String): String? {
+        return try {
+            val freshScope = ScopeUtil.currentPreprocessorScope(project)
+            PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        } catch (e: ProcessCanceledException) {
+            throw e
+        } catch (e: Exception) {
+            logger.warn("Failed to find preprocessor variable: $varName", e)
+            null
+        }
+    }
 }
 
 class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {

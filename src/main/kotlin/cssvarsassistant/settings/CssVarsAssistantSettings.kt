@@ -13,9 +13,9 @@ import com.intellij.openapi.components.Storage
 class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettings.State> {
 
     enum class IndexingScope {
-        PROJECT_ONLY,           // Only project files, no external resolution
-        PROJECT_WITH_IMPORTS,   // Project files + selective @import resolution
-        GLOBAL                  // Full node_modules indexing
+        PROJECT_ONLY,
+        PROJECT_WITH_IMPORTS,
+        GLOBAL
     }
 
 
