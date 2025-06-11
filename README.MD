@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.4.1<br/>
+**Version:** 1.4.2<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
 **Author:** Stian Larsen<br/>
 **Links:** 
@@ -11,6 +11,13 @@
 
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
+---
+## ✨ What's new in 1.4.2
+
+| Category | Highlights |
+|----------|------------|
+| **🛠️ Preprocessor index** | LESS/SCSS variables are indexed for instant resolution. |
+| **🔍 Smarter var() detection** | Completion works while typing incomplete `var(` and resolves aliases quicker. |
 
 ---
 ## ✨ What's new in 1.4.1

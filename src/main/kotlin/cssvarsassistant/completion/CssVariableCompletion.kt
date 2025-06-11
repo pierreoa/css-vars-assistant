@@ -21,9 +21,12 @@ import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
+import cssvarsassistant.util.ValueUtil
 import java.awt.Component
 import java.awt.Graphics
 import javax.swing.Icon
+
+private const val COMPLETION_LOOKUP_ELEMENT_PRIORITY_BASE = 10000
 
 class CssVariableCompletion : CompletionContributor() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
@@ -56,7 +59,6 @@ class CssVariableCompletion : CompletionContributor() {
 
                         ProgressManager.checkCanceled()
 
-                        // 🚀 AGGRESSIVE VAR() DETECTION - Text-based first!
                         if (!isInsideVarFunction(params)) {
                             logger.debug("❌ Not inside var() function")
                             return
@@ -64,16 +66,12 @@ class CssVariableCompletion : CompletionContributor() {
 
                         logger.debug("✅ CSS Variable completion triggered")
 
-                        // Extract prefix more reliably
                         val rawPref = extractVarPrefix(params)
                         val simple = rawPref.removePrefix("--")
                         logger.debug("Extracted prefix: '$rawPref' -> '$simple'")
 
                         val settings = CssVarsAssistantSettings.getInstance()
-
-                        // Use existing scoping logic
                         val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
-
                         val processedVariables = mutableSetOf<String>()
 
                         fun resolveVarValue(
@@ -87,7 +85,6 @@ class CssVariableCompletion : CompletionContributor() {
                             try {
                                 ProgressManager.checkCanceled()
 
-                                // CSS var(..) resolution
                                 val varRef = Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)
                                 if (varRef != null) {
                                     val ref = varRef.groupValues[1]
@@ -113,10 +110,10 @@ class CssVariableCompletion : CompletionContributor() {
                                     return raw
                                 }
 
-                                // LESS/SCSS preprocessor variables
                                 val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
                                 if (lessMatch != null) {
                                     val varName = lessMatch.groupValues[1]
+                                    val preScope = ScopeUtil.currentPreprocessorScope(project)
                                     CssVarCompletionCache.get(project, varName)?.let { return it }
 
                                     val resolved = findPreprocessorVariableValue(project, varName)
@@ -139,14 +136,17 @@ class CssVariableCompletion : CompletionContributor() {
 
                         ProgressManager.checkCanceled()
 
-                        // Use existing CssVarKeyCache
                         val keyCache = CssVarKeyCache.get(project)
                         keyCache.getKeys()
                             .forEach { rawName ->
                                 ProgressManager.checkCanceled()
 
                                 val display = rawName.removePrefix("--")
-                                if (!display.startsWith(simple, ignoreCase = true)) return@forEach
+                                if (simple.isNotBlank() && !display.startsWith(
+                                        simple,
+                                        ignoreCase = true
+                                    )
+                                ) return@forEach
 
                                 processedVariables.add(rawName)
 
@@ -171,8 +171,11 @@ class CssVariableCompletion : CompletionContributor() {
                                 val uniqueValuePairs: List<Pair<String, String>> =
                                     valuePairs.distinctBy { (ctx, v) -> ctx to v }
                                 val values = uniqueValuePairs.map { it.second }.distinct()
+
                                 val mainValue = uniqueValuePairs.find { it.first == "default" }?.second
                                     ?: values.first()
+
+                                val cleanMainValue = mainValue.trim().replace(Regex("""\s*\(.*\)$"""), "")
 
                                 val docEntry = allVals.firstOrNull {
                                     it.substringAfter(DELIMITER).substringAfter(DELIMITER).isNotBlank()
@@ -187,17 +190,29 @@ class CssVariableCompletion : CompletionContributor() {
                                 entries += Entry(
                                     rawName,
                                     display,
-                                    mainValue,
+                                    cleanMainValue,
                                     uniqueValuePairs,
                                     doc,
                                     isAllColor
                                 )
                             }
 
-                        entries.sortBy { it.display }
+                        entries.forEach { entry ->
+                            val type = ValueUtil.getValueType(entry.mainValue)
+                        }
 
-                        for (e in entries) {
+                        // Smart value-based sorting
+                        entries.sortWith(createSmartComparator(settings.sortingOrder))
+
+                        entries.forEachIndexed { index, entry ->
+                        }
+
+                        // 🔥 Key fix: Use PrioritizedLookupElement with descending priorities
+                        entries.forEachIndexed { index, e ->
                             ProgressManager.checkCanceled()
+
+                            // Calculate priority: first item gets highest priority
+                            val priority = (COMPLETION_LOOKUP_ELEMENT_PRIORITY_BASE - index).toDouble()
 
                             val short = e.doc.takeIf { it.isNotBlank() }
                                 ?.let { it.take(40) + if (it.length > 40) "…" else "" }
@@ -231,7 +246,7 @@ class CssVariableCompletion : CompletionContributor() {
                                 else -> e.mainValue
                             }
 
-                            val elt = LookupElementBuilder
+                            val lookupElement = LookupElementBuilder
                                 .create(e.rawName)
                                 .withPresentableText(e.display)
                                 .withLookupString(e.display)
@@ -252,10 +267,12 @@ class CssVariableCompletion : CompletionContributor() {
                                     }
                                 }
 
-                            result.addElement(elt)
+                            // 🔥 This is the key fix: Wrap with PrioritizedLookupElement
+                            result.addElement(
+                                PrioritizedLookupElement.withPriority(lookupElement, priority)
+                            )
                         }
 
-                        // Always stop IDE completions when in var() context
                         result.stopHere()
 
                         val endTime = System.currentTimeMillis()
@@ -271,16 +288,38 @@ class CssVariableCompletion : CompletionContributor() {
         )
     }
 
-    /**
-     * 🚀 ROBUST VAR() DETECTION - Text-based analysis that works during typing
-     */
+    private fun createSmartComparator(order: CssVarsAssistantSettings.SortingOrder): Comparator<Entry> {
+        val baseComparator = Comparator<Entry> { a, b ->
+            // 1. Group by value type
+            val aType = ValueUtil.getValueType(a.mainValue)
+            val bType = ValueUtil.getValueType(b.mainValue)
+
+            if (aType != bType) {
+                return@Comparator aType.ordinal - bType.ordinal
+            }
+
+            // 2. Sort within same type
+            when (aType) {
+                ValueUtil.ValueType.SIZE -> ValueUtil.compareSizes(a.mainValue, b.mainValue)
+                ValueUtil.ValueType.COLOR -> ValueUtil.compareColors(a.mainValue, b.mainValue)
+                ValueUtil.ValueType.NUMBER -> ValueUtil.compareNumbers(a.mainValue, b.mainValue)
+                ValueUtil.ValueType.OTHER -> a.display.compareTo(b.display, true)
+            }
+        }
+
+        return if (order == CssVarsAssistantSettings.SortingOrder.DESC) {
+            baseComparator.reversed()
+        } else {
+            baseComparator
+        }
+    }
+
     private fun isInsideVarFunction(params: CompletionParameters): Boolean {
         val offset = params.offset
-        val document = params.editor?.document ?: return false
+        val document = params.editor.document ?: return false
         val text = document.text
 
         try {
-            // Strategy 1: Check current line for var( pattern
             val lineNumber = document.getLineNumber(offset)
             val lineStart = document.getLineStartOffset(lineNumber)
             val lineEnd = document.getLineEndOffset(lineNumber)
@@ -289,32 +328,26 @@ class CssVariableCompletion : CompletionContributor() {
 
             logger.debug("Line analysis: '$lineText' at position $positionInLine")
 
-            // Find all var( patterns in current line
             val varPattern = Regex("""var\s*\(""")
             val matches = varPattern.findAll(lineText).toList()
 
             for (match in matches) {
                 val varOpenParenPos = match.range.last
 
-                // Check if cursor is after this var(
                 if (positionInLine > varOpenParenPos) {
-                    // Look for closing ) after cursor position
                     val remainingText = lineText.substring(positionInLine)
                     val closingParenIndex = remainingText.indexOf(')')
 
                     if (closingParenIndex == -1) {
-                        // No closing paren found - definitely inside
                         logger.debug("✅ Found var( without closing paren")
                         return true
                     } else {
-                        // Found closing paren - we're inside if cursor is before it
                         logger.debug("✅ Found var( with closing paren at ${positionInLine + closingParenIndex}")
                         return true
                     }
                 }
             }
 
-            // Strategy 2: Broader search around cursor
             val searchStart = maxOf(0, offset - 100)
             val searchEnd = minOf(text.length, offset + 20)
             val searchText = text.substring(searchStart, searchEnd)
@@ -337,7 +370,6 @@ class CssVariableCompletion : CompletionContributor() {
                 }
             }
 
-            // Strategy 3: PSI fallback (for complete structures)
             val pos = params.position
             val fn = PsiTreeUtil.getParentOfType(pos, CssFunction::class.java)
             if (fn?.name == "var") {
@@ -358,16 +390,12 @@ class CssVariableCompletion : CompletionContributor() {
         }
     }
 
-    /**
-     * Extract the current prefix being typed inside var()
-     */
     private fun extractVarPrefix(params: CompletionParameters): String {
         val offset = params.offset
         val document = params.editor?.document ?: return ""
         val text = document.text
 
         try {
-            // Find the most recent var( before cursor
             val searchStart = maxOf(0, offset - 200)
             val searchText = text.substring(searchStart, offset)
 
@@ -376,7 +404,7 @@ class CssVariableCompletion : CompletionContributor() {
 
             if (matches.isNotEmpty()) {
                 val lastMatch = matches.last()
-                val varStart = searchStart + lastMatch.range.last + 1 // Position after var(
+                val varStart = searchStart + lastMatch.range.last + 1
                 val prefix = text.substring(varStart, offset).trim()
                 logger.debug("Extracted prefix: '$prefix'")
                 return prefix

@@ -13,7 +13,7 @@ val PREPROCESSOR_VARIABLE_INDEX_NAME: ID<String, String> =
 
 class PreprocessorVariableIndex : FileBasedIndexExtension<String, String>() {
     override fun getName(): ID<String, String> = PREPROCESSOR_VARIABLE_INDEX_NAME
-    override fun getVersion(): Int = 20
+    override fun getVersion(): Int = 60
 
     override fun dependsOnFileContent(): Boolean = true
 

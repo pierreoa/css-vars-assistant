@@ -18,19 +18,22 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         GLOBAL
     }
 
+    enum class SortingOrder {
+        ASC, DESC
+    }
 
     data class State(
         var showContextValues: Boolean = true,
         var allowIdeCompletions: Boolean = true,
         var indexingScope: IndexingScope = IndexingScope.GLOBAL,
-        var maxImportDepth: Int = 20  // Prevent infinite recursion in @import chains
+        var maxImportDepth: Int = 20,
+        var sortingOrder: SortingOrder = SortingOrder.ASC
     )
 
     private var state = State()
 
     override fun getState() = state
     override fun loadState(state: State) {
-        // clamp legacy / external values first
         val clamped = state.maxImportDepth.coerceIn(1, MAX_IMPORT_DEPTH)
         this.state = state.copy(maxImportDepth = clamped)
     }
@@ -59,6 +62,12 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
             state.maxImportDepth = value.coerceIn(1, MAX_IMPORT_DEPTH)
         }
 
+    var sortingOrder: SortingOrder
+        get() = state.sortingOrder
+        set(value) {
+            state.sortingOrder = value
+        }
+
     // Computed properties for backward compatibility and clarity
     val useGlobalSearchScope: Boolean
         get() = indexingScope == IndexingScope.GLOBAL
@@ -71,7 +80,6 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
 
     companion object {
         const val MAX_IMPORT_DEPTH = 20
-
 
         @JvmStatic
         fun getInstance() = com.intellij.openapi.application.ApplicationManager

@@ -39,6 +39,15 @@ class CssVarsAssistantConfigurable : Configurable {
         settings.indexingScope == CssVarsAssistantSettings.IndexingScope.GLOBAL
     )
 
+    private val ascRadio = JRadioButton(
+        "Ascending (8px, 16px, 24px)",
+        settings.sortingOrder == CssVarsAssistantSettings.SortingOrder.ASC
+    )
+    private val descRadio = JRadioButton(
+        "Descending (24px, 16px, 8px)",
+        settings.sortingOrder == CssVarsAssistantSettings.SortingOrder.DESC
+    )
+
     private val maxImportDepthSpinner = JSpinner(
         SpinnerNumberModel(
             settings.maxImportDepth.coerceIn(1, CssVarsAssistantSettings.MAX_IMPORT_DEPTH),
@@ -138,6 +147,10 @@ class CssVarsAssistantConfigurable : Configurable {
         scopeGroup.add(projectWithImportsRadio)
         scopeGroup.add(globalRadio)
 
+        val sortingGroup = ButtonGroup()
+        sortingGroup.add(ascRadio)
+        sortingGroup.add(descRadio)
+
         // Add listener to enable/disable import depth spinner
         val importDepthListener = ActionListener { updateImportDepthState() }
         projectOnlyRadio.addActionListener(importDepthListener)
@@ -218,21 +231,32 @@ class CssVarsAssistantConfigurable : Configurable {
         gbc.gridy = 12
         gbc.insets = JBUI.insets(2, 15, 2, 5)
         panel.add(depthPanel, gbc)
-
-        // Performance warning
         gbc.gridy = 13
+        gbc.insets = JBUI.insets(20, 5, 5, 5)
+        panel.add(createSectionLabel("Value-Based Sorting:"), gbc)
+
+        gbc.gridy = 14
+        gbc.insets = JBUI.insets(5, 15, 2, 5)
+        panel.add(ascRadio, gbc)
+
+        gbc.gridy = 15
+        gbc.insets = JBUI.insets(2, 15, 2, 5)
+        panel.add(descRadio, gbc)
+
+
+        gbc.gridy = 16
         gbc.insets = JBUI.insets(20, 5, 5, 5)
         panel.add(createSectionLabel("Performance Note:"), gbc)
 
-        gbc.gridy = 14
+        gbc.gridy = 17
         gbc.insets = JBUI.insets(2, 15, 2, 5)
         panel.add(createDescriptionLabel("Global scope indexing may impact IDE performance with large projects."), gbc)
 
-        gbc.gridy = 15
+        gbc.gridy = 18
         gbc.weighty = 1.0
         panel.add(Box.createVerticalGlue(), gbc)
 
-        gbc.gridy = 16
+        gbc.gridy = 19
         gbc.insets = JBUI.insets(25, 5, 5, 5)
         panel.add(reindexButton, gbc)
 
@@ -260,13 +284,17 @@ class CssVarsAssistantConfigurable : Configurable {
         showContextValuesCheck.isSelected != settings.showContextValues ||
                 allowIdeCompletionsCheck.isSelected != settings.allowIdeCompletions ||
                 getSelectedScope() != settings.indexingScope ||
-                (maxImportDepthSpinner.value as Int) != settings.maxImportDepth
+                (maxImportDepthSpinner.value as Int) != settings.maxImportDepth ||
+                getSelectedSortingOrder() != settings.sortingOrder
+
 
     override fun apply() {
         settings.showContextValues = showContextValuesCheck.isSelected
         settings.allowIdeCompletions = allowIdeCompletionsCheck.isSelected
         settings.indexingScope = getSelectedScope()
         settings.maxImportDepth = maxImportDepthSpinner.value as Int
+        settings.sortingOrder = getSelectedSortingOrder()
+
     }
 
     override fun reset() {
@@ -277,6 +305,11 @@ class CssVarsAssistantConfigurable : Configurable {
             CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY -> projectOnlyRadio.isSelected = true
             CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> projectWithImportsRadio.isSelected = true
             CssVarsAssistantSettings.IndexingScope.GLOBAL -> globalRadio.isSelected = true
+        }
+
+        when (settings.sortingOrder) {
+            CssVarsAssistantSettings.SortingOrder.ASC -> ascRadio.isSelected = true
+            CssVarsAssistantSettings.SortingOrder.DESC -> descRadio.isSelected = true
         }
 
         maxImportDepthSpinner.value = settings.maxImportDepth
@@ -291,4 +324,11 @@ class CssVarsAssistantConfigurable : Configurable {
     }
 
     override fun disposeUIResources() {}
+
+    private fun getSelectedSortingOrder(): CssVarsAssistantSettings.SortingOrder = when {
+        ascRadio.isSelected -> CssVarsAssistantSettings.SortingOrder.ASC
+        descRadio.isSelected -> CssVarsAssistantSettings.SortingOrder.DESC
+        else -> CssVarsAssistantSettings.SortingOrder.ASC
+    }
 }
+

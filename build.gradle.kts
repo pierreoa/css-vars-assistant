@@ -66,11 +66,22 @@ intellijPlatform {
         }
 
         changeNotes = """
-<h2>1.4.2 – 2025-06-11</h2>
+<h2>1.4.3 – 2025-06-11</h2>
+
+<h3>Added</h3>
+<ul>
+  <li><strong>Preprocessor index</strong> – LESS/SCSS variables are indexed for instant resolution.</li>
+</ul>
 
 <h3>Improved</h3>
 <ul>
-  <li><strong>Fixes.....</strong> - .</li>
+  <li>More reliable <code>var()</code> detection and prefix extraction while typing.</li>
+  <li>Preprocessor variable resolution uses the new index for faster lookups.</li>
+</ul>
+
+<h3>Fixed</h3>
+<ul>
+  <li>Race conditions in scope calculation and duplicate IDE completions.</li>
 </ul>
 """.trimIndent()
 

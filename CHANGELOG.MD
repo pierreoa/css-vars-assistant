@@ -5,6 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 
 ---
 
+## [1.4.2] – 2025‑06‑11
+### Added
+* **Preprocessor variable index** – LESS and SCSS variables are indexed for instant look‑ups.
+
+### Improved
+* More reliable `var()` detection and prefix extraction while typing.
+* Preprocessor variable resolution uses the new index for faster results.
+
+### Fixed
+* Scope caching race conditions and duplicate IDE completions.
+
+---
+
 ## [1.4.1] – 2025‑06‑05
 ### Improved
 * Completion suggestions load faster with a project-level cache of variable names.
