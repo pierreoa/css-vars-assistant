@@ -5,7 +5,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RankingTest {
-
     @Test
     fun testRankingOrder() {
         val testCases = listOf(
@@ -85,8 +84,7 @@ class RankingTest {
         val sorted = contexts.sortedWith { a, b ->
             val rankA = rank(a)
             val rankB = rank(b)
-            compareValuesBy(
-                rankA, rankB,
+            compareValuesBy(rankA, rankB,
                 { it.first },
                 { it.second ?: Int.MAX_VALUE },
                 { it.third }
