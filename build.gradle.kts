@@ -33,27 +33,28 @@ intellijPlatform {
         id = "cssvarsassistant"
         name = "CSS Variables Assistant"
         version = project.version.toString()
+
         description = """
-            <h2>CSS Variables Assistant</h2>
-            <p>
-              Enhances CSS variable usage with autocomplete and documentation.
-              Shows <strong>variable values</strong> in completion suggestions <strong>on typing</strong> and 
-              documentation on hover. Also displays color swatches for color variables.
-            </p>
-            <p>
-              Supercharge your CSS custom properties in WebStorm and IntelliJ-based IDEs:
-            </p>
-            <ul>
-              <li><b>Smart Autocomplete</b> inside <code>var(--…)</code></li>
-              <li><b>Quick Documentation</b> (Ctrl+Q) showing value, description & color swatch</li>
-              <li><b>JSDoc‑style</b> comment support (<code>@name</code>, <code>@description</code>, <code>@example</code>)</li>
-              <li><b>Advanced @import resolution</b> with configurable scope and depth</li>
-              <li><b>Multi-preprocessor support</b> (CSS, SCSS, SASS, LESS)</li>
-            </ul>
-            <p>
-              Works in CSS, SCSS, SASS, LESS, JavaScript/TypeScript, and JSX/TSX files.
-            </p>
-        """.trimIndent()
+        <h2>CSS Variables Assistant</h2>
+        <p>
+          Supercharge your CSS custom properties in WebStorm and IntelliJ-based IDEs with advanced autocomplete, documentation, and preprocessor support.
+        </p>
+        <ul>
+          <li><b>Instant variable lookup</b> – LESS and SCSS variables are now indexed for blazing-fast completions and documentation.</li>
+          <li><b>Smart Autocomplete</b> – Context-aware suggestions inside <code>var(--…)</code>, <code>@less</code>, and <code>${'$'}scss</code> with value-based sorting (by px size, color, or number).</li>
+          <li><b>Quick Documentation</b> (<kbd>Ctrl+Q</kbd>) – Shows value tables (with pixel equivalents for rem/em/%/vh/vw/pt), context labels (Default, Dark, min-width, etc.), and color swatches.</li>
+          <li><b>JSDoc‑style</b> comment support – <code>@name</code>, <code>@description</code>, <code>@example</code> auto-parsed and displayed.</li>
+          <li><b>Advanced @import resolution</b> – Traverses and indexes imports across CSS, SCSS, SASS & LESS, with configurable scope and max depth.</li>
+          <li><b>Configurable sorting</b> – Completion list order is customizable: ascending or descending by value.</li>
+          <li><b>Context ranking</b> – Contexts (Default, Light, Dark, min/max-width, etc.) are ranked for optimal relevance.</li>
+          <li><b>Debugging tools</b> – Trace variable origins and import chains visually for easy debugging.</li>
+          <li><b>Performance & robustness</b> – Sophisticated caching, race condition fixes, and extensive automated tests ensure fast, reliable operation even in large projects.</li>
+          <li><b>Works everywhere</b> – CSS, SCSS, SASS, LESS.</li>
+        </ul>
+        <p>
+          <b>New in 1.4.2:</b> Preprocessor variable index, value-based completion sorting, pixel equivalents in docs, smarter var() detection, and more!
+        </p>
+    """.trimIndent()
 
         vendor {
             name = "StianLarsen"

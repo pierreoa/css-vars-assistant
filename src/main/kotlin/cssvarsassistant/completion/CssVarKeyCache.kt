@@ -1,8 +1,8 @@
 package cssvarsassistant.completion
 
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME

@@ -316,7 +316,7 @@ class CssVariableCompletion : CompletionContributor() {
 
     private fun isInsideVarFunction(params: CompletionParameters): Boolean {
         val offset = params.offset
-        val document = params.editor.document ?: return false
+        val document = params.editor.document
         val text = document.text
 
         try {
@@ -392,7 +392,7 @@ class CssVariableCompletion : CompletionContributor() {
 
     private fun extractVarPrefix(params: CompletionParameters): String {
         val offset = params.offset
-        val document = params.editor?.document ?: return ""
+        val document = params.editor.document
         val text = document.text
 
         try {

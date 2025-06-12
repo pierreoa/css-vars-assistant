@@ -1,5 +1,6 @@
 package cssvarsassistant.documentation
 
+import com.intellij.ui.Gray
 import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -15,8 +16,8 @@ object ColorParser {
         "red" to Color(255, 0, 0),
         "green" to Color(0, 128, 0),
         "blue" to Color(0, 0, 255),
-        "white" to Color(255, 255, 255),
-        "black" to Color(0, 0, 0),
+        "white" to Gray._255,
+        "black" to Gray._0,
         "yellow" to Color(255, 255, 0),
         "cyan" to Color(0, 255, 255),
         "magenta" to Color(255, 0, 255),
@@ -24,8 +25,8 @@ object ColorParser {
         "purple" to Color(128, 0, 128),
         "brown" to Color(165, 42, 42),
         "pink" to Color(255, 192, 203),
-        "gray" to Color(128, 128, 128),
-        "grey" to Color(128, 128, 128)
+        "gray" to Gray._128,
+        "grey" to Gray._128
     )
 
     /**

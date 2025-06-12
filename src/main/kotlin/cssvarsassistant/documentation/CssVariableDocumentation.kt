@@ -6,7 +6,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
-import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
@@ -249,12 +248,4 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         return """<font color="$hex">&#9632;</font>"""
     }
 
-}
-
-private inline fun <T> safeIndexLookup(project: Project, action: () -> List<T>): List<T> {
-    return if (DumbService.isDumb(project)) emptyList() else try {
-        action()
-    } catch (ignored: IndexNotReadyException) {
-        emptyList()
-    }
 }
