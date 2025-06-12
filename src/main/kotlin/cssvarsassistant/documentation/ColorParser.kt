@@ -1,5 +1,6 @@
 package cssvarsassistant.documentation
 
+import com.intellij.ui.Gray
 import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -11,6 +12,22 @@ object ColorParser {
     private val hslRe = Regex("^hsla?\\(([^)]*)\\)$")
     private val bareHslRe = Regex("^([\\d.]+)\\s+([\\d.]+%)\\s+([\\d.]+%)$")
     private val hwbRe = Regex("^hwb\\(([^)]*)\\)$")
+    private val namedColors = mapOf(
+        "red" to Color(255, 0, 0),
+        "green" to Color(0, 128, 0),
+        "blue" to Color(0, 0, 255),
+        "white" to Gray._255,
+        "black" to Gray._0,
+        "yellow" to Color(255, 255, 0),
+        "cyan" to Color(0, 255, 255),
+        "magenta" to Color(255, 0, 255),
+        "orange" to Color(255, 165, 0),
+        "purple" to Color(128, 0, 128),
+        "brown" to Color(165, 42, 42),
+        "pink" to Color(255, 192, 203),
+        "gray" to Gray._128,
+        "grey" to Gray._128
+    )
 
     /**
      * Parses a CSS color string to a java.awt.Color, or null if not recognized.
@@ -18,6 +35,8 @@ object ColorParser {
      */
     fun parseCssColor(raw: String): Color? {
         val s = raw.trim()
+        val cleaned = raw.trim().lowercase()
+        namedColors[cleaned]?.let { return it }
 
         hexRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseHexColor(it) }
         rgbRe.matchEntire(s)?.groupValues?.get(1)?.let { return parseRgbColor(it) }

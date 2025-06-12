@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.4.1<br/>
+**Version:** 1.4.2<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
 **Author:** Stian Larsen<br/>
 **Links:** 
@@ -11,15 +11,27 @@
 
 
 Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
-
 ---
+## ✨ What's new in 1.4.2
+
+| Category                | Highlights                                                                                  |
+|-------------------------|---------------------------------------------------------------------------------------------|
+| **🛠️ Preprocessor index**      | LESS/SCSS variables are now indexed for instant lookup and resolution.                  |
+| **🔍 Smarter var() detection** | Completions work even while typing incomplete `var(` and resolve aliases more quickly.   |
+| **📏 Value-based sorting**      | Variable completions are sorted by their numeric value (asc/desc, configurable).        |
+| **📐 Pixel equivalents in docs**| Documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.              |
+| **🧠 Context sorting**          | Contexts (Default, Light, Dark, min/max-width, etc.) are now ranked logically.         |
+| **⚡ Performance & robustness** | Race conditions and duplicate completions fixed, smarter scope caching, better error handling. |
+| **🧪 Test coverage**            | Extensive automated tests for value handling, context ranking, and pixel conversion.    |
+---
+
 ## ✨ What's new in 1.4.1
 
 | Category | Highlights |
 |----------|------------|
 | **⚡ Faster completions** | CSS variable names are cached per project to avoid repeated index lookups. Caches clear automatically on index rebuild. |
-
 ---
+
 ## ✨ What's new in 1.4.0
 
 | Category | Highlights                                                                                                                               |
@@ -61,7 +73,8 @@ See full details in [`CHANGELOG.MD`](./CHANGELOG.MD).
 * **Recursive var() & pre-processor alias resolution**
 * **JSDoc-style tags** `@name`, `@description`, `@example`
 * Works inside **CSS / SCSS / SASS / LESS / JS / TS / JSX / TSX**
-
+* * **Preprocessor variable index** for instant `LESS`/`SCSS`/`SASS variable look-ups
+* **Value-based sorting** with pixel equivalents for intuitive ordering
 ---
 
 ## Configuration
@@ -74,6 +87,7 @@ Open **Settings → Tools → CSS Variables Assistant**
 | **Max @import depth** | 1 – 20 (default 20)                                                |
 | **Show context values** | Display dark/light & media-query variants                          |
 | **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses                       |
+| **Completion sorting** | Ascending or descending value order |
 | **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately            |
 
 ---

@@ -13,8 +13,6 @@ class IconUtilTest {
         // decode the Base64 body and ensure it’s non‐empty:
         val b64 = uri.removePrefix("data:image/png;base64,")
         val bytes = java.util.Base64.getDecoder().decode(b64)
-        println("bytes.length = ${bytes.size}")
-        println("uri = \n $uri")
         assertTrue(bytes.isNotEmpty())
     }
 }

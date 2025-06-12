@@ -1,8 +1,7 @@
 package cssvarsassistant.index
 
-import com.intellij.util.indexing.FileBasedIndex
-import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import com.intellij.openapi.project.ProjectManager
+import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVarKeyCache
 
 /** Global cache for LESS / SCSS fallback resolutions used by completion + docs. */

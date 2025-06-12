@@ -6,7 +6,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
-import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
@@ -18,26 +17,24 @@ import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
+import cssvarsassistant.util.RankUtil.rank
 import cssvarsassistant.util.ScopeUtil
+import cssvarsassistant.util.ValueUtil
 
 class CssVariableDocumentation : AbstractDocumentationProvider() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
 
     private val ENTRY_SEP = "|||"
-    private val lessVarCache = mutableMapOf<Pair<Project, String>, String?>()
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
 
             val project = element.project
-            // Check for cancellation early
             if (DumbService.isDumb(project)) return null
-
 
             ProgressManager.checkCanceled()
             val settings = CssVarsAssistantSettings.getInstance()
             val varName = extractVariableName(element) ?: return null
-            // FIXED: Use CSS indexing scope for FileBasedIndex operations
             val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
             val rawEntries = FileBasedIndex.getInstance().getValues(CSS_VARIABLE_INDEXER_NAME, varName, cssScope)
@@ -49,7 +46,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 val p = it.split(DELIMITER, limit = 3)
                 if (p.size >= 2) {
                     val ctx = p[0]
-                    // FIXED: Pass project instead of scope to resolveVarValue
                     val value = resolveVarValue(project, p[1])
                     val comment = p.getOrElse(2) { "" }
                     Triple(ctx, value, comment)
@@ -70,6 +66,12 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 unique.firstOrNull { it.third.isNotBlank() } ?: unique.find { it.first == "default" } ?: unique.first()
             val doc = DocParser.parse(docEntry.third, docEntry.second)
 
+
+            val hasNonPixelSizeValues = sorted.any { (_, value, _) ->
+                (ValueUtil.isSizeValue(value) || ValueUtil.isNumericValue(value)) &&
+                        !value.trim().endsWith("px")
+            }
+
             val sb = StringBuilder()
             sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
             if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name))
@@ -81,21 +83,42 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             sb.append("<p><b>Values:</b></p>")
                 .append("<table>")
                 .append("<tr><td>Context</td>")
-                .append("<td>&nbsp;</td>")
-                .append("<td align='left'>Value</td></tr>")
+                .append("<td>&nbsp;</td>") // color swatch column
+                .append("<td align='left'>Value</td>")
+
+            // Only add pixel equivalent column if there are size values
+            if (hasNonPixelSizeValues) {
+                sb.append("<td align='left'>Pixel Equivalent</td>")
+            }
+            sb.append("</tr>")
 
             for ((ctx, value, _) in sorted) {
-                // Check for cancellation in loops
                 ProgressManager.checkCanceled()
 
                 val isColour = ColorParser.parseCssColor(value) != null
+                val pixelEquivalent = if (ValueUtil.isSizeValue(value)) {
+                    "${ValueUtil.convertToPixels(value).toInt()}px"
+                } else if (ValueUtil.isNumericValue(value)) {
+                    "${value.trim().toDoubleOrNull()?.toInt() ?: 0}px"
+                } else {
+                    "—"
+                }
+
                 sb.append("<tr><td style='color:#888;padding-right:10px'>")
                     .append(StringUtil.escapeXmlEntities(contextLabel(ctx, isColour)))
                     .append("</td><td>")
                 if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
-                sb.append("</td><td>")
+                sb.append("</td><td style='padding-right:15px'>")
                     .append(StringUtil.escapeXmlEntities(value))
-                    .append("</td></tr>")
+                    .append("</td>")
+
+                // Only add pixel equivalent cell if we're showing that column
+                if (hasNonPixelSizeValues) {
+                    sb.append("<td style='color:#666;font-size:0.9em'>")
+                        .append(StringUtil.escapeXmlEntities(pixelEquivalent))
+                        .append("</td>")
+                }
+                sb.append("</tr>")
             }
             sb.append("</table>")
 
@@ -123,7 +146,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
             return sb.toString()
         } catch (e: ProcessCanceledException) {
-            // CRITICAL: Always rethrow ProcessCanceledException
             throw e
         } catch (e: Exception) {
             logger.error("Error generating documentation", e)
@@ -131,7 +153,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         }
     }
 
-    // FIXED: Always use fresh scope for resolution
     private fun resolveVarValue(
         project: Project,
         raw: String,
@@ -144,11 +165,9 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         try {
             ProgressManager.checkCanceled()
 
-            // ── 1. CSS var(..) ───────────────────────────────────────
             Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)?.let { m ->
                 val ref = m.groupValues[1]
                 if (ref !in visited) {
-                    // Use CSS indexing scope for FileBasedIndex operations
                     val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
                     val entries = FileBasedIndex.getInstance()
                         .getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
@@ -168,18 +187,15 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 return raw
             }
 
-            // ── 2. LESS / SCSS pre-prosessor-vars ────────────────────
             val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
             if (lessMatch != null) {
                 val varName = lessMatch.groupValues[1]
 
-                // FIXED: Use scope-aware cache
                 val currentScope = ScopeUtil.currentPreprocessorScope(project)
                 CssVarCompletionCache.get(project, varName, currentScope)?.let { return it }
 
                 val resolved = findPreprocessorVariableValue(project, varName)
 
-                // FIXED: Only cache non-null values and include scope
                 if (resolved != null) {
                     CssVarCompletionCache.put(project, varName, currentScope, resolved)
                 }
@@ -196,13 +212,11 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         }
     }
 
-    // FIXED: Always use fresh scope for preprocessor resolution
     private fun findPreprocessorVariableValue(
         project: Project,
         varName: String
     ): String? {
         return try {
-            // Always compute fresh scope to see newly discovered imports
             val freshScope = ScopeUtil.currentPreprocessorScope(project)
             PreprocessorUtil.resolveVariable(project, varName, freshScope)
         } catch (e: ProcessCanceledException) {
@@ -234,31 +248,4 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         return """<font color="$hex">&#9632;</font>"""
     }
 
-    private fun rank(ctx: String): Triple<Int, Int?, String> {
-        val c = ctx.lowercase()
-
-        if (c == "default" || ("prefers-color-scheme" in c && "light" in c)) return Triple(0, null, c)
-
-        if ("prefers-color-scheme" in c && "dark" in c) return Triple(1, null, c)
-
-        Regex("""max-width:\s*(\d+)(px|rem|em)?""").find(c)?.let {
-            return Triple(2, -it.groupValues[1].toInt(), c)
-        }
-        Regex("""min-width:\s*(\d+)(px|rem|em)?""").find(c)?.let {
-            return Triple(3, it.groupValues[1].toInt(), c)
-        }
-
-        if (arrayOf("hover", "motion", "orientation", "print").any { it in c }) return Triple(4, null, c)
-
-        return Triple(5, null, c)
-    }
-}
-
-/** Runs [action] only when indices are ready, otherwise returns an empty list. */
-private inline fun <T> safeIndexLookup(project: Project, action: () -> List<T>): List<T> {
-    return if (DumbService.isDumb(project)) emptyList() else try {
-        action()
-    } catch (ignored: IndexNotReadyException) {           // ➌ safety-net
-        emptyList()
-    }
 }

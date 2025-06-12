@@ -218,15 +218,4 @@ object ImportResolver {
 
         return null
     }
-
-    /**
-     * Checks if a file should be considered for import resolution based on its location
-     */
-    fun isExternalImport(file: VirtualFile, project: Project): Boolean {
-        val projectRoot = project.guessProjectDir()?.path ?: return false
-        val filePath = file.path
-
-        // Check if file is in node_modules
-        return filePath.contains("/node_modules/") && !filePath.startsWith(projectRoot)
-    }
 }
