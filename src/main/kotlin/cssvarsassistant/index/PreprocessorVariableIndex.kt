@@ -13,7 +13,7 @@ val PREPROCESSOR_VARIABLE_INDEX_NAME: ID<String, String> =
 
 class PreprocessorVariableIndex : FileBasedIndexExtension<String, String>() {
     override fun getName(): ID<String, String> = PREPROCESSOR_VARIABLE_INDEX_NAME
-    override fun getVersion(): Int = 65
+    override fun getVersion(): Int = 65 // todo: Increment before every build to import resolution changes
 
     override fun dependsOnFileContent(): Boolean = true
 
