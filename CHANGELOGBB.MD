@@ -4,34 +4,19 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 
 ---
+
 ## [1.4.2] – 2025‑06‑12
-
 ### Added
-- **Preprocessor variable index**: LESS and SCSS variables are now indexed for instant look‑ups using a new `PreprocessorVariableIndex`.
-- **Value-based completion sorting**: Variable completions are sorted by their numeric value, with an option to choose ascending or descending order.
-- **Pixel equivalent column**: Variable documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.
-- **Settings UI for sorting**: Added a configuration option to choose value-based variable sorting order (ascending or descending).
-- **Comprehensive value-type utilities**: Added `ValueUtil` for classifying, comparing, and converting variable values for size, color, and number types.
-- **Smarter context ranking**: Added `RankUtil` for logical sorting and ranking of context labels (e.g., default, min-width).
-- **Extensive automated tests**: Added `ValueUtilTest` and `RankingTest` for robust value handling and context ranking.
+* **Preprocessor variable index** – LESS and SCSS variables are indexed for instant look‑ups.
+* **Value‑based completion sorting** – variables sort by numeric value with ascending/descending option.
+* **Pixel equivalent column** – documentation shows px values for rem/em/%/vh/vw/dvh sizes.
 
-### Changed
-- **Improved performance and scope caching**: Variable key cache and scope caching now use stable, scope-aware maps for reliable completion and documentation.
-- **Smarter var() detection**: Completion now works while typing incomplete `var(` and resolves aliases more quickly, even with missing parenthesis.
-- **Documentation improvements**: Documentation tables conditionally display pixel equivalents and improved context sorting, with more robust and readable HTML output.
-- **Refactored preprocessor resolution**: Preprocessor variable resolution is faster and now leverages the new index instead of scanning files directly.
-- **Improved logging and error handling**: More robust cancellation checks and error reporting in completion and documentation providers.
-- **Code cleanup**: Removed legacy and duplicated code, improved code comments, and enhanced maintainability.
+### Improved
+* More reliable `var()` detection and prefix extraction while typing.
+* Preprocessor variable resolution uses the new index for faster results.
 
 ### Fixed
-- **Scope caching race conditions**: Caches for variable keys and preprocessor scopes are now properly invalidated and synchronized on changes, preventing duplicate completions and stale results.
-- **Duplicate IDE completions**: Improved completion logic eliminates repeated suggestions.
-- **Robustness**: Improved handling of edge cases in value parsing, prefix extraction, and context detection.
-- **IDE startup and indexing**: Now compatible with latest IntelliJ indexing and plugin APIs.
-
-### Removed
-- Legacy file scan-based preprocessor variable resolution logic (now replaced by index-based resolution).
-- Unused or obsolete code in tests and main sources.
+* Scope caching race conditions and duplicate IDE completions.
 
 ---
 

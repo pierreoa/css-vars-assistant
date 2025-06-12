@@ -14,21 +14,24 @@ Boosts CSS Custom Properties with smart completion, rich documentation and full 
 ---
 ## ✨ What's new in 1.4.2
 
-| Category | Highlights |
-|----------|------------|
-| **🛠️ Preprocessor index** | LESS/SCSS variables are indexed for instant resolution. |
-| **🔍 Smarter var() detection** | Completion works while typing incomplete `var(` and resolves aliases quicker. |
-| **📏 Value-based sorting** | Completions sort by numeric value with ascending/descending option. |
-| **📐 Docs show px equivalents** | Non‑px size values display their pixel conversion. |
-
+| Category                | Highlights                                                                                  |
+|-------------------------|---------------------------------------------------------------------------------------------|
+| **🛠️ Preprocessor index**      | LESS/SCSS variables are now indexed for instant lookup and resolution.                  |
+| **🔍 Smarter var() detection** | Completions work even while typing incomplete `var(` and resolve aliases more quickly.   |
+| **📏 Value-based sorting**      | Variable completions are sorted by their numeric value (asc/desc, configurable).        |
+| **📐 Pixel equivalents in docs**| Documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.              |
+| **🧠 Context sorting**          | Contexts (Default, Light, Dark, min/max-width, etc.) are now ranked logically.         |
+| **⚡ Performance & robustness** | Race conditions and duplicate completions fixed, smarter scope caching, better error handling. |
+| **🧪 Test coverage**            | Extensive automated tests for value handling, context ranking, and pixel conversion.    |
 ---
+
 ## ✨ What's new in 1.4.1
 
 | Category | Highlights |
 |----------|------------|
 | **⚡ Faster completions** | CSS variable names are cached per project to avoid repeated index lookups. Caches clear automatically on index rebuild. |
-
 ---
+
 ## ✨ What's new in 1.4.0
 
 | Category | Highlights                                                                                                                               |
