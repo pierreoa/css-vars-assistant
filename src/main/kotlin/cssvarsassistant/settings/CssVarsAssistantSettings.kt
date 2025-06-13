@@ -29,7 +29,7 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         var showDependenciesBlock: Boolean = true,
         var showRelatedBlock: Boolean = true,
         var showFilesBlock: Boolean = true,
-        var indexingScope: IndexingScope = IndexingScope.GLOBAL,
+        var indexingScope: IndexingScope = IndexingScope.PROJECT_WITH_IMPORTS,
         var maxImportDepth: Int = 20,
         var sortingOrder: SortingOrder = SortingOrder.ASC
     )

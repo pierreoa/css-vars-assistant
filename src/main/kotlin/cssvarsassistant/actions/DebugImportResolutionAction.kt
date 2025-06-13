@@ -86,6 +86,7 @@ class DebugImportResolutionAction : AnAction() {
                             .findAll(content).toList()
                         importChain.append("Found ${importMatches.size} @import statements in source file\n")
                         importMatches.forEach { match ->
+                            indicator.checkCanceled()
                             importChain.append("  - ${match.value}\n")
                         }
                         importChain.append("\n")
@@ -122,6 +123,7 @@ class DebugImportResolutionAction : AnAction() {
 
                     var totalVarsFromImports = 0
                     allImports.forEach { importedFile ->
+                        indicator.checkCanceled()
                         val vars = countVariablesInFile(importedFile)
                         totalVarsFromImports += vars
                         importChain.append("Variables in ${importedFile.name}: $vars\n")
@@ -454,14 +456,16 @@ class DebugImportResolutionAction : AnAction() {
     /**
      * Count CSS variables in a file
      */
-    private fun countVariablesInFile(file: VirtualFile): Int {
-        return try {
-            val content = String(file.contentsToByteArray())
-            val varPattern = Regex("""(--[A-Za-z0-9\-_]+)\s*:\s*([^;]+);""")
-            varPattern.findAll(content).count()
-        } catch (e: Exception) {
-            0
-        }
+    private fun countVariablesInFile(file: VirtualFile): Int = try {
+        val content = String(file.contentsToByteArray())
+        val patterns = listOf(
+            Regex("""--[\w-]+\s*:\s*[^;]+;"""),  // css custom prop
+            Regex("""@[\w-]+\s*:\s*[^;]+;"""),   // less
+            Regex("""\$[\w-]+\s*:\s*[^;]+;""")   // scss / sass
+        )
+        patterns.sumOf { it.findAll(content).count() }
+    } catch (_: Exception) {
+        0
     }
 
     private fun isCssFile(file: VirtualFile): Boolean {

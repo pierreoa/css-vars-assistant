@@ -91,7 +91,7 @@ const val INDEX_VERSION = $newVersion"""
             counterFile.writeText(newBuildCounter.toString())
 
             // Use git commit count + base version + build counter for unique builds
-            val baseVersion = 300
+            val baseVersion = 500
             val gitVersion = baseVersion + commitCount + newBuildCounter
 
             Pair(gitVersion, "Git-based (commits: $commitCount, build: $newBuildCounter, branch: $branch)")

@@ -13,7 +13,6 @@ import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVarCompletionCache
 import cssvarsassistant.completion.CssVarKeyCache
 import cssvarsassistant.completion.CssVariableCompletion
-import cssvarsassistant.documentation.DocStatsCache
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
@@ -22,6 +21,7 @@ import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.RankUtil.rank
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
+import kotlin.math.roundToInt
 
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
 
@@ -29,39 +29,45 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
     private val ENTRY_SEP = "|||"
 
+    /* ---------------------------------------------------------------------- */
+    /*  generateDoc()                                                         */
+    /* ---------------------------------------------------------------------- */
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
             val project = element.project
             if (DumbService.isDumb(project)) return null
-
             ProgressManager.checkCanceled()
+
             val settings = CssVarsAssistantSettings.getInstance()
             val varName = extractVariableName(element) ?: return null
             val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
-            val rawEntries = FileBasedIndex.getInstance().getValues(CSS_VARIABLE_INDEXER_NAME, varName, cssScope)
-                .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
+            // ------------------- hent alle verdier for variabelen -------------
+            val rawEntries = FileBasedIndex.getInstance()
+                .getValues(CSS_VARIABLE_INDEXER_NAME, varName, cssScope)
+                .flatMap { it.split(ENTRY_SEP) }
+                .filter { it.isNotBlank() }
 
             if (rawEntries.isEmpty()) return null
 
-            val parsed: List<Triple<String, ResolutionInfo, String>> = rawEntries.mapNotNull {
-                val p = it.split(DELIMITER, limit = 3)
-                if (p.size >= 2) {
-                    val ctx = p[0]
-                    val resInfo = resolveVarValue(project, p[1])
-                    val comment = p.getOrElse(2) { "" }
+            // (ctx, resolved-info, kommentar)
+            val parsed = rawEntries.mapNotNull {
+                val parts = it.split(DELIMITER, limit = 3)
+                if (parts.size >= 2) {
+                    val ctx = parts[0]
+                    val resInfo = resolveVarValue(project, parts[1])
+                    val comment = parts.getOrElse(2) { "" }
                     Triple(ctx, resInfo, comment)
                 } else null
             }
 
+            // collapse «last wins» pr. context
             val collapsed = parsed
-                .groupBy { it.first } // Group by context (default, @media, etc.)
-                .mapValues { (_, list) -> list.last() } // Last declared wins within each context
+                .groupBy { it.first }
+                .mapValues { (_, list) -> list.last() }
                 .values.toList()
 
-            val unique = collapsed
-
-            val sorted = unique.sortedWith(
+            val sorted = collapsed.sortedWith(
                 compareBy(
                     { rank(it.first).first },
                     { rank(it.first).second ?: Int.MAX_VALUE },
@@ -69,126 +75,135 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 )
             )
 
-            val docEntry = unique.firstOrNull { it.third.isNotBlank() }
-                ?: unique.find { it.first == "default" }
-                ?: unique.first()
+            /* ---------- Doc-parser til heading/description ------------------ */
+            val docEntry = collapsed.firstOrNull { it.third.isNotBlank() }
+                ?: collapsed.find { it.first == "default" }
+                ?: collapsed.first()
             val doc = DocParser.parse(docEntry.third, docEntry.second.resolved)
 
-            val hasNonPixelSizeValues = sorted.any { (_, resInfo, _) ->
-                (ValueUtil.isSizeValue(resInfo.resolved) || ValueUtil.isNumericValue(resInfo.resolved)) ||
-                        (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved)
+            /* ---------- Skal vi vise Pixel-kolonne? ------------------------- */
+            val showPixelCol = sorted.any { (_, res, _) ->
+                if (!ValueUtil.isSizeValue(res.resolved)) return@any false
+                val unit  = res.resolved.replace(Regex("[0-9.+\\-]"), "")
+                    .trim().lowercase()
+                val pxVal = ValueUtil.convertToPixels(res.resolved)
+                val numericRaw = res.resolved
+                    .replace(Regex("[^0-9.+\\-]"), "")
+                    .toDoubleOrNull() ?: pxVal
+                unit != "px" || pxVal.roundToInt() != numericRaw.roundToInt()
             }
 
+            /* ---------- HTML-builder --------------------------------------- */
             val sb = StringBuilder()
             sb.append("<html><head><style>")
                 .append("body { font-size: 11px; line-height: 1.3; }")
-                .append("table { font-size: 10px; }")
-                .append("td { padding: 2px 4px; max-width: 200px; word-wrap: break-word; }")
+                .append("table { font-size: 10px; border-collapse: collapse; }")
+                .append("td { padding: 2px 4px; max-width: 220px; word-wrap: break-word; }")
                 .append("code { font-size: 10px; }")
                 .append("</style></head><body>")
                 .append(DocumentationMarkup.DEFINITION_START)
 
-
-            if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name))
-                .append("</b><br/>")
-            sb.append("<small>CSS Variable: <code>").append(StringUtil.escapeXmlEntities(varName))
-                .append("</code></small>").append(DocumentationMarkup.DEFINITION_END)
+            if (doc.name.isNotBlank()) {
+                sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name)).append("</b><br/>")
+            }
+            sb.append("<small>CSS Variable: <code>")
+                .append(StringUtil.escapeXmlEntities(varName))
+                .append("</code></small>")
+                .append(DocumentationMarkup.DEFINITION_END)
                 .append(DocumentationMarkup.CONTENT_START)
 
-            sb.append("<p><b>Values:</b></p>")
-                .append("<table>")
+            /* ----------------------- TABELLen ------------------------------ */
+            sb.append("<p><b>Values:</b></p><table>")
                 .append("<tr><td>Context</td>")
-                .append("<td>&nbsp;</td>") // color swatch column
-                .append("<td align='left'>Value</td>")
-
-            if (hasNonPixelSizeValues) {
-                sb.append("<td align='left'>Pixel Equivalent</td>")
-            }
+                .append("<td>&nbsp;</td>")            // farge-swatch
+                .append("<td>Value</td>")
+                .append("<td>Type</td>")
+                .append("<td>Source</td>")
+                .append("<td>Uses</td>")
+                .append("<td>WCAG</td>")
+            if (showPixelCol) sb.append("<td>Pixel&nbsp;Eq.</td>")
             sb.append("</tr>")
 
             for ((ctx, resInfo, _) in sorted) {
                 ProgressManager.checkCanceled()
 
-                val value = resInfo.resolved
-                val isColour = ColorParser.parseCssColor(value) != null
-                val pixelEquivalent = if (ValueUtil.isSizeValue(value)) {
-                    "${ValueUtil.convertToPixels(value).toInt()}px"
-                } else if (ValueUtil.isNumericValue(value)) {
-                    "${value.trim().toDoubleOrNull()?.toInt() ?: 0}px"
-                } else {
-                    "—"
+                val value      = resInfo.resolved
+                val isColour   = ColorParser.parseCssColor(value) != null
+                val pixelEq    = if (ValueUtil.isSizeValue(value))
+                    "${ValueUtil.convertToPixels(value).roundToInt()}px" else "—"
+                val typeStr    = ValueUtil.getValueType(value).name
+                val sourceStr  = if (resInfo.steps.isNotEmpty()) resInfo.steps.first() else "—"
+
+
+                val usagePair = getUsageStats(project, varName)
+                val usageTxt  = "${usagePair.second}×"
+
+                val luminance = ColorParser.parseCssColor(value)?.let { c ->
+                    val lr = listOf(c.red, c.green, c.blue).map { ch ->
+                        val v = ch / 255.0
+                        if (v <= 0.03928) v / 12.92 else Math.pow((v + 0.055)/1.055, 2.4)
+                    }
+                    0.2126*lr[0] + 0.7152*lr[1] + 0.0722*lr[2]
                 }
+                val contrastTxt = luminance?.let { "%.2f:1".format((1.05)/(it+0.05)) } ?: "—"
 
-                sb.append("<tr><td style='color:#888;padding-right:10px'>")
+
+                sb.append("<tr>")
+
+                /* -- Context ------------------------------------------------ */
+                sb.append("<td style='color:#888;padding-right:10px'>")
                     .append(StringUtil.escapeXmlEntities(contextLabel(ctx, isColour)))
-                    .append("</td><td>")
-                if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
-                sb.append("</td><td style='padding-right:15px'>")
+                    .append("</td>")
 
+                /* -- Farge‐swatch ------------------------------------------- */
+                sb.append("<td>")
+                if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
+                sb.append("</td>")
+
+                /* -- Value (m/ tooltip hvis avledet) ------------------------ */
+                sb.append("<td>")
                 if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
-                    sb.append(StringUtil.escapeXmlEntities(resInfo.original))
+                    sb.append(StringUtil.escapeXmlEntities(resInfo.resolved))
+                        .append(" <span title='")
+                        .append(StringUtil.escapeXmlEntities(resInfo.steps.joinToString(" → ")))
+                        .append("' style='color:#888;font-size:0.8em'>↪</span>")
                 } else {
                     sb.append(StringUtil.escapeXmlEntities(value))
                 }
                 sb.append("</td>")
 
-                if (hasNonPixelSizeValues) {
-                    val displayPixel = if (ValueUtil.isSizeValue(resInfo.resolved)) {
-                        pixelEquivalent // Show converted pixels, not resolved value
-                    } else if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
-                        resInfo.resolved // Show any resolved value
-                    } else {
-                        pixelEquivalent // Show converted equivalent
-                    }
-                    sb.append("<td style='color:#666;font-size:0.9em'>")
-                        .append(StringUtil.escapeXmlEntities(displayPixel))
+                /* -- Type --------------------------------------------------- */
+                sb.append("<td style='color:#666'>").append(typeStr).append("</td>")
+
+                /* -- Source ------------------------------------------------- */
+                sb.append("<td style='color:#666'>")
+                    .append(StringUtil.escapeXmlEntities(sourceStr))
+                    .append("</td>")
+
+                /* -- Pixel col ---------------------------------------------- */
+                if (showPixelCol) {
+                    sb.append("<td style='color:#666;font-size:0.8em'>")
+                        .append(pixelEq)
                         .append("</td>")
+                } else {
+                    sb.append("<td>&nbsp;</td>")
                 }
+
+
+
                 sb.append("</tr>")
             }
             sb.append("</table>")
 
-            if (settings.showUsageBlock) {
-                val (fileCount, usageCount) = getUsageStats(project, varName)
-                if (fileCount > 0) {
-                    sb.append("<p><b>Usage:</b> ${usageCount} times in ${fileCount} files</p>")
-                }
+            /* ---------------- Optional blocks (slått av) ------------------- */
+            // Vi dropper Usage/Dependencies/Related/Files fordi tallene er upålitelige.
+            // La innstillingene stå hvis du vil re-aktivere senere.
+
+            /* ---------------- Description / Examples ------------------------ */
+            if (doc.description.isNotBlank()) {
+                sb.append("<p><b>Description:</b><br/>")
+                    .append(StringUtil.escapeXmlEntities(doc.description)).append("</p>")
             }
-
-            if (settings.showDependenciesBlock) {
-                val dependencies = findDependencies(project, varName)
-                if (dependencies.isNotEmpty()) {
-                    sb.append("<p><b>References:</b> ")
-                    dependencies.take(5).forEach { dep ->
-                        sb.append("<code>${StringUtil.escapeXmlEntities(dep)}</code> ")
-                    }
-                    if (dependencies.size > 5) sb.append("...")
-                    sb.append("</p>")
-                }
-            }
-
-            if (settings.showRelatedBlock) {
-                val related = findRelatedVariables(project, varName)
-                if (related.isNotEmpty()) {
-                    sb.append("<p><b>Related:</b> ")
-                    related.forEach { rel ->
-                        sb.append("<code>${StringUtil.escapeXmlEntities(rel.removePrefix("--"))}</code> ")
-                    }
-                    sb.append("</p>")
-                }
-            }
-
-            if (settings.showFilesBlock) {
-                val locations = getFileLocations(project, varName)
-                if (locations.isNotEmpty()) {
-                    sb.append("<p><b>Files:</b> ${locations.joinToString(", ")}</p>")
-                }
-            }
-
-
-            if (doc.description.isNotBlank()) sb.append("<p><b>Description:</b><br/>")
-                .append(StringUtil.escapeXmlEntities(doc.description)).append("</p>")
-
 
             if (doc.examples.isNotEmpty()) {
                 sb.append("<p><b>Examples:</b></p><pre>")
@@ -196,19 +211,22 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 sb.append("</pre>")
             }
 
-            sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }.firstOrNull()?.let { c ->
-                val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
-                sb.append(
-                    """<p style='margin-top:10px'>
-                             |<a target="_blank"
-                             |   href="https://webaim.org/resources/contrastchecker/?fcolor=$hex&bcolor=000000">
-                             |Check contrast on WebAIM Contrast Checker
-                             |</a></p>""".trimMargin()
-                )
-            }
+            /* -------------- Quick link til kontrast-tester for farger -------- */
+            sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }
+                .firstOrNull()?.let { c ->
+                    val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
+                    sb.append(
+                        """<p style='margin-top:10px'>
+                               <a target="_blank"
+                                  href="https://webaim.org/resources/contrastchecker/?fcolor=$hex&bcolor=000000">
+                                  Check contrast on WebAIM Contrast Checker
+                               </a></p>"""
+                    )
+                }
 
             sb.append(DocumentationMarkup.CONTENT_END).append("</body></html>")
             return sb.toString()
+
         } catch (e: ProcessCanceledException) {
             throw e
         } catch (e: Exception) {
@@ -216,6 +234,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             return null
         }
     }
+
 
     private fun resolveVarValue(
         project: Project,
@@ -366,7 +385,9 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 try {
                     val content = file.inputStream.bufferedReader().readText()
                     Regex("""var\(\s*${Regex.escape(varName)}\s*\)""").findAll(content).count()
-                } catch (e: Exception) { 0 }
+                } catch (e: Exception) {
+                    0
+                }
             }
 
             files.size to totalUsages
