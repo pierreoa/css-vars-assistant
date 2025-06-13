@@ -11,6 +11,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVarCompletionCache
+import cssvarsassistant.completion.CssVarKeyCache
 import cssvarsassistant.completion.CssVariableCompletion
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
@@ -21,14 +22,14 @@ import cssvarsassistant.util.RankUtil.rank
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
 
+data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
+
 class CssVariableDocumentation : AbstractDocumentationProvider() {
     private val logger = Logger.getInstance(CssVariableCompletion::class.java)
-
     private val ENTRY_SEP = "|||"
 
     override fun generateDoc(element: PsiElement, original: PsiElement?): String? {
         try {
-
             val project = element.project
             if (DumbService.isDumb(project)) return null
 
@@ -42,17 +43,22 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
 
             if (rawEntries.isEmpty()) return null
 
-            val parsed: List<Triple<String, String, String>> = rawEntries.mapNotNull {
+            val parsed: List<Triple<String, ResolutionInfo, String>> = rawEntries.mapNotNull {
                 val p = it.split(DELIMITER, limit = 3)
                 if (p.size >= 2) {
                     val ctx = p[0]
-                    val value = resolveVarValue(project, p[1])
+                    val resInfo = resolveVarValue(project, p[1])
                     val comment = p.getOrElse(2) { "" }
-                    Triple(ctx, value, comment)
+                    Triple(ctx, resInfo, comment)
                 } else null
             }
 
-            val unique = parsed.distinctBy { it.first to it.second }
+            val collapsed = parsed
+                .groupBy { it.first } // Group by context (default, @media, etc.)
+                .mapValues { (_, list) -> list.last() } // Last declared wins within each context
+                .values.toList()
+
+            val unique = collapsed
 
             val sorted = unique.sortedWith(
                 compareBy(
@@ -62,18 +68,26 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 )
             )
 
-            val docEntry =
-                unique.firstOrNull { it.third.isNotBlank() } ?: unique.find { it.first == "default" } ?: unique.first()
-            val doc = DocParser.parse(docEntry.third, docEntry.second)
+            val docEntry = unique.firstOrNull { it.third.isNotBlank() }
+                ?: unique.find { it.first == "default" }
+                ?: unique.first()
+            val doc = DocParser.parse(docEntry.third, docEntry.second.resolved)
 
-
-            val hasNonPixelSizeValues = sorted.any { (_, value, _) ->
-                (ValueUtil.isSizeValue(value) || ValueUtil.isNumericValue(value)) &&
-                        !value.trim().endsWith("px")
+            val hasNonPixelSizeValues = sorted.any { (_, resInfo, _) ->
+                (ValueUtil.isSizeValue(resInfo.resolved) || ValueUtil.isNumericValue(resInfo.resolved)) ||
+                        (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved)
             }
 
             val sb = StringBuilder()
-            sb.append("<html><body>").append(DocumentationMarkup.DEFINITION_START)
+            sb.append("<html><head><style>")
+                .append("body { font-size: 11px; line-height: 1.3; }")
+                .append("table { font-size: 10px; }")
+                .append("td { padding: 2px 4px; max-width: 200px; word-wrap: break-word; }")
+                .append("code { font-size: 10px; }")
+                .append("</style></head><body>")
+                .append(DocumentationMarkup.DEFINITION_START)
+
+
             if (doc.name.isNotBlank()) sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name))
                 .append("</b><br/>")
             sb.append("<small>CSS Variable: <code>").append(StringUtil.escapeXmlEntities(varName))
@@ -86,15 +100,15 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 .append("<td>&nbsp;</td>") // color swatch column
                 .append("<td align='left'>Value</td>")
 
-            // Only add pixel equivalent column if there are size values
             if (hasNonPixelSizeValues) {
                 sb.append("<td align='left'>Pixel Equivalent</td>")
             }
             sb.append("</tr>")
 
-            for ((ctx, value, _) in sorted) {
+            for ((ctx, resInfo, _) in sorted) {
                 ProgressManager.checkCanceled()
 
+                val value = resInfo.resolved
                 val isColour = ColorParser.parseCssColor(value) != null
                 val pixelEquivalent = if (ValueUtil.isSizeValue(value)) {
                     "${ValueUtil.convertToPixels(value).toInt()}px"
@@ -109,21 +123,63 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                     .append("</td><td>")
                 if (isColour) sb.append(colorSwatchHtml(value)) else sb.append("&nbsp;")
                 sb.append("</td><td style='padding-right:15px'>")
-                    .append(StringUtil.escapeXmlEntities(value))
-                    .append("</td>")
 
-                // Only add pixel equivalent cell if we're showing that column
+                if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+                    sb.append(StringUtil.escapeXmlEntities(resInfo.original))
+                } else {
+                    sb.append(StringUtil.escapeXmlEntities(value))
+                }
+                sb.append("</td>")
+
                 if (hasNonPixelSizeValues) {
+                    val displayPixel = if (ValueUtil.isSizeValue(resInfo.resolved)) {
+                        pixelEquivalent // Show converted pixels, not resolved value
+                    } else if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+                        resInfo.resolved // Show any resolved value
+                    } else {
+                        pixelEquivalent // Show converted equivalent
+                    }
                     sb.append("<td style='color:#666;font-size:0.9em'>")
-                        .append(StringUtil.escapeXmlEntities(pixelEquivalent))
+                        .append(StringUtil.escapeXmlEntities(displayPixel))
                         .append("</td>")
                 }
                 sb.append("</tr>")
             }
             sb.append("</table>")
 
+            val (fileCount, usageCount) = getUsageStats(project, varName)
+            if (fileCount > 0) {
+                sb.append("<p><b>Usage:</b> ${usageCount} times in ${fileCount} files</p>")
+            }
+
+            val dependencies = findDependencies(project, varName)
+            if (dependencies.isNotEmpty()) {
+                sb.append("<p><b>References:</b> ")
+                dependencies.take(5).forEach { dep ->
+                    sb.append("<code>${StringUtil.escapeXmlEntities(dep)}</code> ")
+                }
+                if (dependencies.size > 5) sb.append("...")
+                sb.append("</p>")
+            }
+
+            val related = findRelatedVariables(project, varName)
+            if (related.isNotEmpty()) {
+                sb.append("<p><b>Related:</b> ")
+                related.forEach { rel ->
+                    sb.append("<code>${StringUtil.escapeXmlEntities(rel.removePrefix("--"))}</code> ")
+                }
+                sb.append("</p>")
+            }
+
+            val locations = getFileLocations(project, varName)
+            if (locations.isNotEmpty()) {
+                sb.append("<p><b>Files:</b> ${locations.joinToString(", ")}</p>")
+            }
+
+
             if (doc.description.isNotBlank()) sb.append("<p><b>Description:</b><br/>")
                 .append(StringUtil.escapeXmlEntities(doc.description)).append("</p>")
+
 
             if (doc.examples.isNotEmpty()) {
                 sb.append("<p><b>Examples:</b></p><pre>")
@@ -131,7 +187,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                 sb.append("</pre>")
             }
 
-            sorted.mapNotNull { ColorParser.parseCssColor(it.second) }.firstOrNull()?.let { c ->
+            sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }.firstOrNull()?.let { c ->
                 val hex = "%02x%02x%02x".format(c.red, c.green, c.blue)
                 sb.append(
                     """<p style='margin-top:10px'>
@@ -143,7 +199,6 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             }
 
             sb.append(DocumentationMarkup.CONTENT_END).append("</body></html>")
-
             return sb.toString()
         } catch (e: ProcessCanceledException) {
             throw e
@@ -158,9 +213,10 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         raw: String,
         visited: Set<String> = emptySet(),
         depth: Int = 0,
-    ): String {
+        steps: List<String> = emptyList()
+    ): ResolutionInfo {
         val settings = CssVarsAssistantSettings.getInstance()
-        if (depth > settings.maxImportDepth) return raw
+        if (depth > settings.maxImportDepth) return ResolutionInfo(raw, raw, steps)
 
         try {
             ProgressManager.checkCanceled()
@@ -168,6 +224,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)?.let { m ->
                 val ref = m.groupValues[1]
                 if (ref !in visited) {
+                    val newSteps = steps + "var($ref)"
                     val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
                     val entries = FileBasedIndex.getInstance()
                         .getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
@@ -182,40 +239,38 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
                     }
 
                     if (defVal != null)
-                        return resolveVarValue(project, defVal, visited + ref, depth + 1)
+                        return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
                 }
-                return raw
+                return ResolutionInfo(raw, raw, steps)
             }
 
-            val lessMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
-            if (lessMatch != null) {
-                val varName = lessMatch.groupValues[1]
-
+            val preprocessorMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
+            if (preprocessorMatch != null) {
+                val varName = preprocessorMatch.groupValues[1]
+                val prefix = if (raw.contains("@")) "@" else "$"
                 val currentScope = ScopeUtil.currentPreprocessorScope(project)
-                CssVarCompletionCache.get(project, varName, currentScope)?.let { return it }
+
+                CssVarCompletionCache.get(project, varName, currentScope)?.let {
+                    return ResolutionInfo(raw, it, steps + "$prefix$varName")
+                }
 
                 val resolved = findPreprocessorVariableValue(project, varName)
-
-                if (resolved != null) {
+                if (resolved != null && resolved != raw) {
                     CssVarCompletionCache.put(project, varName, currentScope, resolved)
+                    return ResolutionInfo(raw, resolved, steps + "$prefix$varName")
                 }
-
-                return resolved ?: raw
             }
 
-            return raw
+            return ResolutionInfo(raw, raw, steps)
         } catch (e: ProcessCanceledException) {
             throw e
         } catch (e: Exception) {
             logger.warn("Failed to resolve variable in documentation: $raw", e)
-            return raw
+            return ResolutionInfo(raw, raw, steps)
         }
     }
 
-    private fun findPreprocessorVariableValue(
-        project: Project,
-        varName: String
-    ): String? {
+    private fun findPreprocessorVariableValue(project: Project, varName: String): String? {
         return try {
             val freshScope = ScopeUtil.currentPreprocessorScope(project)
             PreprocessorUtil.resolveVariable(project, varName, freshScope)
@@ -227,16 +282,49 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         }
     }
 
-    private fun contextLabel(ctx: String, isColor: Boolean): String = when {
-        ctx == "default" -> {
-            if (isColor) "Light mode" else "Default"
+    private fun contextLabel(ctx: String, isColor: Boolean): String {
+        // Handle default case
+        if (ctx == "default") return if (isColor) "Light mode" else "Default"
+
+        // Handle color scheme
+        if ("prefers-color-scheme" in ctx.lowercase()) {
+            return when {
+                "light" in ctx.lowercase() -> "Light mode"
+                "dark" in ctx.lowercase() -> "Dark mode"
+                else -> "Color scheme"
+            }
         }
 
-        "prefers-color-scheme" in ctx.lowercase() && "light" in ctx.lowercase() -> "Light mode"
-        "prefers-color-scheme" in ctx.lowercase() && "dark" in ctx.lowercase() -> "Dark mode"
-        Regex("""max-width:\s*(\d+)""").find(ctx) != null -> "≤${Regex("""max-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
-        Regex("""min-width:\s*(\d+)""").find(ctx) != null -> "≥${Regex("""min-width:\s*(\d+)""").find(ctx)!!.groupValues[1]}px"
-        else -> ctx
+        // Handle reduced motion
+        if ("prefers-reduced-motion" in ctx.lowercase() && "reduce" in ctx.lowercase()) {
+            return "Reduced motion"
+        }
+
+        // Handle width-based media queries with better regex
+        val maxWidthRegex = Regex("""max-width:\s*(\d+)(?:px)?\s*\)""")
+        val minWidthRegex = Regex("""min-width:\s*(\d+)(?:px)?\s*\)""")
+
+        val maxWidthMatch = maxWidthRegex.find(ctx)
+        val minWidthMatch = minWidthRegex.find(ctx)
+
+        return when {
+            maxWidthMatch != null && minWidthMatch != null -> {
+                val maxWidth = maxWidthMatch.groupValues[1]
+                val minWidth = minWidthMatch.groupValues[1]
+                "${minWidth}px-${maxWidth}px"
+            }
+
+            maxWidthMatch != null -> "≤${maxWidthMatch.groupValues[1]}px"
+            minWidthMatch != null -> "≥${minWidthMatch.groupValues[1]}px"
+            else -> {
+                // Clean up context for display
+                ctx.replace(Regex("""@media\s+"""), "")
+                    .replace("screen and ", "")
+                    .replace(Regex("""\s+"""), " ")
+                    .trim()
+                    .takeIf { it.isNotEmpty() } ?: "Media query"
+            }
+        }
     }
 
     private fun extractVariableName(el: PsiElement): String? = el.text.trim().takeIf { it.startsWith("--") }
@@ -248,4 +336,66 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
         return """<font color="$hex">&#9632;</font>"""
     }
 
+    private fun getUsageStats(project: Project, varName: String): Pair<Int, Int> {
+        val settings = CssVarsAssistantSettings.getInstance()
+        val scope = ScopeUtil.effectiveCssIndexingScope(project, settings)
+
+        val files = FileBasedIndex.getInstance()
+            .getContainingFiles(CSS_VARIABLE_INDEXER_NAME, varName, scope)
+
+        val totalUsages = files.sumOf { file ->
+            try {
+                val content = file.inputStream.bufferedReader().readText()
+                Regex("""var\(\s*${Regex.escape(varName)}\s*\)""").findAll(content).count()
+            } catch (e: Exception) { 0 }
+        }
+
+        return files.size to totalUsages
+    }
+
+    private fun findDependencies(project: Project, varName: String, visited: Set<String> = emptySet()): List<String> {
+        if (varName in visited) return emptyList()
+
+        val settings = CssVarsAssistantSettings.getInstance()
+        val scope = ScopeUtil.effectiveCssIndexingScope(project, settings)
+
+        val entries = FileBasedIndex.getInstance()
+            .getValues(CSS_VARIABLE_INDEXER_NAME, varName, scope)
+            .flatMap { it.split(ENTRY_SEP) }
+            .filter { it.isNotBlank() }
+
+        return entries.flatMap { entry ->
+            val value = entry.split(DELIMITER).getOrNull(1) ?: ""
+            Regex("""var\(\s*(--[\w-]+)\s*\)""").findAll(value)
+                .map { it.groupValues[1] }
+                .flatMap { ref -> listOf(ref) + findDependencies(project, ref, visited + varName) }
+        }.distinct()
+    }
+
+    private fun findRelatedVariables(project: Project, varName: String): List<String> {
+        val keyCache = CssVarKeyCache.get(project)
+        val base = varName.removePrefix("--")
+
+        return keyCache.getKeys()
+            .filter { it != varName }
+            .filter { candidate ->
+                val candidateBase = candidate.removePrefix("--")
+                // Same prefix or suffix patterns
+                base.split("-").any { part ->
+                    part.length > 2 && candidateBase.contains(part, ignoreCase = true)
+                }
+            }
+            .take(8)
+    }
+
+    private fun getFileLocations(project: Project, varName: String): List<String> {
+        val settings = CssVarsAssistantSettings.getInstance()
+        val scope = ScopeUtil.effectiveCssIndexingScope(project, settings)
+
+        return FileBasedIndex.getInstance()
+            .getContainingFiles(CSS_VARIABLE_INDEXER_NAME, varName, scope)
+            .map { it.name }
+            .distinct()
+            .take(5)
+    }
 }

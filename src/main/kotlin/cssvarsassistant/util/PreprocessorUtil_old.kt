@@ -12,8 +12,8 @@ import cssvarsassistant.index.PREPROCESSOR_VARIABLE_INDEX_NAME
  * Utility for resolving LESS/SCSS variables across the project.
  * Uses a FileBasedIndex instead of scanning files on each request.
  */
-object PreprocessorUtil {
-    private val LOG = Logger.getInstance(PreprocessorUtil::class.java)
+object PreprocessorUtil_old {
+    private val LOG = Logger.getInstance(PreprocessorUtil_old::class.java)
     private val cache = mutableMapOf<Triple<Project, String, Int>, String?>()
 
     /**
@@ -39,25 +39,6 @@ object PreprocessorUtil {
 
             for (value in values) {
                 ProgressManager.checkCanceled()
-
-                // Handle arithmetic like (@ffe-spacing * 8)
-                val mathMatch = Regex("""\(\s*[@$]([\w-]+)\s*\*\s*(\d+)\s*\)""").find(value)
-                if (mathMatch != null) {
-                    val baseVar = mathMatch.groupValues[1]
-                    val multiplier = mathMatch.groupValues[2].toIntOrNull() ?: continue
-                    val baseValue = resolveVariable(project, baseVar, scope, visited + varName)
-                    if (baseValue != null) {
-                        val numMatch = Regex("""(\d+)(px|rem|em|%)""").find(baseValue)
-                        if (numMatch != null) {
-                            val num = numMatch.groupValues[1].toInt()
-                            val unit = numMatch.groupValues[2]
-                            val result = "${num * multiplier}$unit"
-                            cache[key] = result
-                            return result
-                        }
-                    }
-                }
-
                 val refMatch = Regex("^[\\s]*[@$]([\\w-]+)").find(value)
                 val resolved = if (refMatch != null) {
                     resolveVariable(project, refMatch.groupValues[1], scope, visited + varName)

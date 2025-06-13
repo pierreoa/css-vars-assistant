@@ -168,12 +168,15 @@ class CssVariableCompletion : CompletionContributor() {
                                     } else null
                                 }
 
-                                val uniqueValuePairs: List<Pair<String, String>> =
-                                    valuePairs.distinctBy { (ctx, v) -> ctx to v }
-                                val values = uniqueValuePairs.map { it.second }.distinct()
+                                val uniqueValuePairs = valuePairs
+                                    .groupBy { it.first }
+                                    .mapValues { (_, list) -> list.last() } // Last declared wins within each context
+                                    .values.toList()
 
-                                val mainValue = uniqueValuePairs.find { it.first == "default" }?.second
-                                    ?: values.first()
+                                val values = uniqueValuePairs.map { it.second }.distinct()
+                                val mainValue = uniqueValuePairs
+                                    .find { it.first == "default" }?.second // Get default context's last value
+                                    ?: uniqueValuePairs.firstOrNull()?.second ?: ""
 
                                 val cleanMainValue = mainValue.trim().replace(Regex("""\s*\(.*\)$"""), "")
 
