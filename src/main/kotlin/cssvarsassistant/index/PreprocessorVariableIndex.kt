@@ -15,6 +15,7 @@ class PreprocessorVariableIndex : FileBasedIndexExtension<String, String>() {
     override fun getName(): ID<String, String> = PREPROCESSOR_VARIABLE_INDEX_NAME
     override fun getVersion(): Int = INDEX_VERSION
 
+
     override fun dependsOnFileContent(): Boolean = true
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
