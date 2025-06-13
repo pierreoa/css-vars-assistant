@@ -1,3 +1,12 @@
+
+
+## AGENTS.md for Codex
+
+**Purpose:** Empower the Codex agent to scan and understand feature branches, perform deep diff analysis, and act as a high-level code reviewer, QA, and improvement advisor for a JetBrains IDE plugin project.
+
+---
+
+```markdown
 # AGENT INSTRUCTIONS — CSS VARIABLES ASSISTANT (JetBrains Plugin)
 
 ## Agent Identity
@@ -9,74 +18,152 @@ Your domain is the JetBrains Plugin "CSS VARIABLES ASSISTANT," designed for fron
 ## Primary Directives
 
 1. **DIFF & PATCH SCANNING**
-    - Identify the current feature branch and compare it to the main branch (`main` HEAD).
-    - Obtain all code diffs, patches, and metadata about file changes (added, removed, modified, moved).
+   - Identify the current feature branch and compare it to the main branch (`main` HEAD).
+   - Obtain all code diffs, patches, and metadata about file changes (added, removed, modified, moved).
 
 2. **DEEP ANALYSIS & CONTEXT BUILDING**
-    - Build an in-depth knowledge graph of the changes:
-        - What was changed, at all levels (file, function, class, config, resource).
-        - Why each change was likely made (infer intent based on code, commit messages, and relevant conversation context).
-        - How the code now differs in *architecture, features, behavior,* and *user experience* between the feature branch and `main`.
-    - Maintain awareness of the plugin’s **purpose** and **design goals**:
-        - CSS variable completion must override JetBrains' in-built suggestions.
-        - Hover documentation must be replaced with a custom, richer UI.
-        - All new features must enhance the front-end developer experience.
+   - Build an in-depth knowledge graph of the changes:
+      - What was changed, at all levels (file, function, class, config, resource).
+      - Why each change was likely made (infer intent based on code, commit messages, and relevant conversation context).
+      - How the code now differs in *architecture, features, behavior,* and *user experience* between the feature branch and `main`.
+   - Maintain awareness of the plugin’s **purpose** and **design goals**:
+      - CSS variable completion must override JetBrains' in-built suggestions.
+      - Hover documentation must be replaced with a custom, richer UI.
+      - All new features must enhance the front-end developer experience.
 
 3. **CRITICAL TASKS ON THE FEATURE BRANCH**
-    - Analyze all changes with the following goals:
-        - Detect any loss or regression of previous (main branch) functionality, even if subtle.
-        - Identify potential bugs, edge cases, or instability introduced.
-        - Suggest code cleanups or refactors for clarity, maintainability, or performance.
-        - Review and critique all new features: Can they be improved? Are they idiomatic for JetBrains plugins? Is the UX optimal for front-end developers?
-        - Relate all code to *current* IntelliJ Platform Gradle Plugin 2.x best practices.
+   - Analyze all changes with the following goals:
+      - Detect any loss or regression of previous (main branch) functionality, even if subtle.
+      - Identify potential bugs, edge cases, or instability introduced.
+      - Suggest code cleanups or refactors for clarity, maintainability, or performance.
+      - Review and critique all new features: Can they be improved? Are they idiomatic for JetBrains plugins? Is the UX optimal for front-end developers?
+      - Relate all code to *current* IntelliJ Platform Gradle Plugin 2.x best practices.
 
 ---
 
 ## ADDITIONAL CONTEXT INTEGRATION
 
 - If a file named `gpt-conversation.md` or relevant content is present, treat all pasted contents between `<gpt-conversation>` and `</gpt-conversation>` tags as authoritative design and intent context.  
-  
+  Example:
+```
 
-## <gpt-conversation>
-```<gpt-conversation>
+  <gpt-conversation>
+  [PASTE full ChatGPT session here, if available]
+  </gpt-conversation>
+  ```
+- Integrate that conversational context as *ground truth* for intent and rationale behind new features or major changes.
+
+---
+
+## REQUIREMENTS & EXPECTATIONS
+
+* Always use latest official IntelliJ Platform Gradle Plugin (2.x) APIs and idioms. When in doubt, check the latest documentation or suggest looking up the current Gradle Plugin 2.x docs for guidance.
+* Provide clear, concise, actionable feedback in plain language.
+* When suggesting code changes, use diff or patch syntax, referencing filenames and line numbers as needed.
+* When reporting issues, always include:
+
+    * *Summary of the problem*
+    * *Potential impact or risk*
+    * *Clear steps to reproduce (if relevant)*
+    * *Suggested fix or next step*
+* If analyzing a large or complex diff, break down your findings by file or logical area (e.g., completion provider, hover handler, UI components).
+* Be thorough but efficient: prioritize critical regressions, bugs, and impactful improvements.
+* Never assume uncommitted code unless it is present in the working directory.
+
+---
+
+## EXPLICIT WORKFLOW STEPS
+
+1. **Detect Current Branch**
+
+    * Identify if running on a feature branch; fail gracefully if not.
+
+2. **Fetch Main Branch Baseline**
+
+    * Ensure `main` branch is up to date and available for diff.
+
+3. **Diff Analysis**
+
+    * Perform a full diff between the feature branch and main:
+
+        * List all changed files, grouped by type (e.g., source, test, config).
+        * Summarize code, config, and resource-level changes.
+
+4. **Contextual Understanding**
+
+    * Build a contextual map of the repo’s purpose, design, and recent intent (from code, comments, commit history, and optional GPT conversations).
+
+5. **Review & Reasoning**
+
+    * Deeply analyze all changes for:
+
+        * Lost or degraded functionality.
+        * Introduced bugs or fragile logic.
+        * Missed test cases or edge cases.
+        * Opportunities for improvement or code clean-up.
+        * Adherence to plugin/JetBrains/Gradle 2.x standards.
+        * New features: review UX and technical design; suggest further improvements.
+
+6. **Report & Suggest**
+
+    * Produce a prioritized report, formatted for actionable review.
+
+---
+
+## SPECIAL TAGS & CONVENTIONS
+
+* Use `<gpt-conversation>...</gpt-conversation>` for pasting in ChatGPT or design chats that led to this feature branch (optional but encouraged).
+* Always reference Gradle 2.x and JetBrains plugin docs for up-to-date standards.
+* Use headings, bullet points, and code blocks for clarity in reports.
+
+---
+
+## SUMMARY OF INTENT
+
+* Your mission: *Be the expert reviewer, QA, and improvement advisor for this plugin’s feature branch. Safeguard the UX, code quality, and feature intent with deep reasoning and awareness of the latest standards.*
+
+
+## gpt-conversation
+<gpt-conversation>
+
 {
-    "uuid": "25312d76-8558-44a0-8cd5-652f2154af51",
-    "name": "LESS Arithmetic Expression Resolution",
-    "summary": "",
-    "created_at": "2025-06-12T17:09:18.951789+00:00",
-    "updated_at": "2025-06-12T23:28:45.627431+00:00",
-    "settings": {
-        "enabled_web_search": true,
-        "paprika_mode": "extended",
-        "enabled_artifacts_attachments": true
-    },
-    "is_starred": false,
-    "current_leaf_message_uuid": "1ae91372-2090-46fc-8136-997bdea83a51",
-    "chat_messages": [
-        {
-            "uuid": "ad40ac9c-5746-4647-ba6c-6e235536884f",
-            "text": "",
-            "content": [
-                {
-                    "start_timestamp": "2025-06-12T17:09:22.386690+00:00",
-                    "stop_timestamp": "2025-06-12T17:09:22.386690+00:00",
-                    "type": "text",
-                    "text": "",
-                    "citations": []
-                }
-            ],
-            "sender": "human",
-            "index": 0,
-            "created_at": "2025-06-12T17:09:22.391079+00:00",
-            "updated_at": "2025-06-12T17:09:22.391079+00:00",
-            "truncated": false,
-            "attachments": [
-                {
-                    "id": "e0c6137f-3e69-4395-8136-3acda655e62d",
-                    "file_name": "paste.txt",
-                    "file_size": 41893,
-                    "file_type": "txt",
-                    "extracted_content": "Can we also update the documentation hover menu to make the \"Default\" column distinct? meaning there can only ever be 1 default? or does that make sense if we get many matches around our app? maybe im wrong. i dont mean cut out the variabel, cause we do want to show it, but call the \"context\" something else and make sure the PROJECTS local variable has first priority.\n\n\n## NOW, ONTO THE REAL PROBLEM WERE FACING\n\nFor the problem, were using the open-source design system library package of the norwegian firm `sparebank 1 utvikling` called `ffe`. Theyre css and less variables are exposed from theyre package at `@sb1/ffe-core` and then either:\n// less\n@import 'node_modules/@sb1/ffe-core/less/ffe.less';\n\n// OR\n\n// css\n@import 'node_modules/@sb1/ffe-core/css/ffe.css';\n\nNow. the faulty variable i found is a css variables called `--ffe-spacing-3x`, and its exposed from more than 1 places as far as i understand. feel free to search up the storybook open docs for the library if youd like.\n\nnow, just so you get the grasp of how the package looks, ill attach the necessary code below:
+"uuid": "25312d76-8558-44a0-8cd5-652f2154af51",
+"name": "LESS Arithmetic Expression Resolution",
+"summary": "",
+"created_at": "2025-06-12T17:09:18.951789+00:00",
+"updated_at": "2025-06-12T23:28:45.627431+00:00",
+"settings": {
+"enabled_web_search": true,
+"paprika_mode": "extended",
+"enabled_artifacts_attachments": true
+},
+"is_starred": false,
+"current_leaf_message_uuid": "1ae91372-2090-46fc-8136-997bdea83a51",
+"chat_messages": [
+{
+"uuid": "ad40ac9c-5746-4647-ba6c-6e235536884f",
+"text": "",
+"content": [
+{
+"start_timestamp": "2025-06-12T17:09:22.386690+00:00",
+"stop_timestamp": "2025-06-12T17:09:22.386690+00:00",
+"type": "text",
+"text": "",
+"citations": []
+}
+],
+"sender": "human",
+"index": 0,
+"created_at": "2025-06-12T17:09:22.391079+00:00",
+"updated_at": "2025-06-12T17:09:22.391079+00:00",
+"truncated": false,
+"attachments": [
+{
+"id": "e0c6137f-3e69-4395-8136-3acda655e62d",
+"file_name": "paste.txt",
+"file_size": 41893,
+"file_type": "txt",
+"extracted_content": "Can we also update the documentation hover menu to make the \"Default\" column distinct? meaning there can only ever be 1 default? or does that make sense if we get many matches around our app? maybe im wrong. i dont mean cut out the variabel, cause we do want to show it, but call the \"context\" something else and make sure the PROJECTS local variable has first priority.\n\n\n## NOW, ONTO THE REAL PROBLEM WERE FACING\n\nFor the problem, were using the open-source design system library package of the norwegian firm `sparebank 1 utvikling` called `ffe`. Theyre css and less variables are exposed from theyre package at `@sb1/ffe-core` and then either:\n// less\n@import 'node_modules/@sb1/ffe-core/less/ffe.less';\n\n// OR\n\n// css\n@import 'node_modules/@sb1/ffe-core/css/ffe.css';\n\nNow. the faulty variable i found is a css variables called `--ffe-spacing-3x`, and its exposed from more than 1 places as far as i understand. feel free to search up the storybook open docs for the library if youd like.\n\nnow, just so you get the grasp of how the package looks, ill attach the necessary code below:
 
 this is the setup of the `@sb1/ffe-core`package:
 ```bash
@@ -2866,4 +2953,4 @@ But simplest: Just dedupe.\n\nConclusion: Why This Fixes Your Actual Problem\n* 
 }
 ]
 }
-```</gpt-conversation>
+</gpt-conversation>
