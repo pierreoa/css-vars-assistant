@@ -5,7 +5,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import cssvarsassistant.completion.CssVarCompletionCache
 import cssvarsassistant.completion.CssVarKeyCache
-import cssvarsassistant.documentation.DocStatsCache
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 import java.util.concurrent.ConcurrentHashMap
@@ -24,7 +23,6 @@ class ImportCache {
             PreprocessorUtil.clearCache()
             CssVarCompletionCache.clearCaches()
             CssVarKeyCache.get(project).clear()
-            DocStatsCache.get(project).clear()
             ScopeUtil.clearCache(project)
         }
     }
@@ -37,7 +35,6 @@ class ImportCache {
         PreprocessorUtil.clearCache()
         CssVarCompletionCache.clearCaches()
         CssVarKeyCache.get(project).clear()
-        DocStatsCache.get(project).clear()
         ScopeUtil.clearCache(project)
     }
 
