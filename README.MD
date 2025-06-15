@@ -1,16 +1,51 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.4.3<br/>
-**Compatible IDEs:** WebStorm / IntelliJ Ultimate **2025.1+**<br/>
-**Author:** Stian Larsen<br/>
+**Version:** 1.5.0<br/>
+**Compatible IDEs:** WebStorm / IntelliJ Ultimate 2024.1+ (and 2025.1+)  
+**Author:** Stian Larsen  
+**Repo:** [github.com/Stianlars1/css-vars-assistant](https://github.com/Stianlars1/css-vars-assistant)
+
 **Links:** 
 - [Official Plugin Website](https://www.css-variables-assistant.dev)
 - [Official JetBrains Marketplace page](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant)
 - [Stian Larsen](https://stianlarsen.com)
 
 
+Supercharge your CSS custom properties and preprocessor variables in JetBrains IDEs with advanced autocomplete, documentation, and debugging tools.
 
-Boosts CSS Custom Properties with smart completion, rich documentation and full pre-processor support.
+
+## Features
+
+- **Instant variable lookup:** Blazing-fast completions and documentation for CSS, LESS, and SCSS variables.
+- **Smart autocomplete:** Context-aware suggestions in `var(--…)`, `@less`, and `$scss` with value-based and context-based sorting.
+- **Rich documentation popups:**
+   - Value tables (with px equivalents for rem/em/%/vh/vw/pt)
+   - Context labels (Default, Dark, min-width, etc.)
+   - Color swatches and contrast info
+   - Usage stats, dependencies, related variables, and file locations
+- **JSDoc-style comments:**  
+  Parse and show `@name`, `@description`, `@example` for variables.
+- **Advanced import resolution:**  
+  Follows and indexes imports across CSS, SCSS, SASS & LESS.
+- **Debugging tools:**  
+  Trace variable origins and import chains visually.
+- **Configurable sorting:**  
+  Sort completion list by value (ascending/descending).
+- **All major preprocessors supported:**  
+  CSS, SCSS, SASS, LESS.
+
+## ✨ What's New in 1.5.0
+
+- Full IntelliJ 2024.1+ documentation API support (with fallback for 241+)
+- Usage stats, dependency lists, related variables, and file locations in documentation popups
+- Recursive/derived variable completions now show a special indicator (↪)
+- Improved DebugImportResolution helper
+- Smarter context labels and more robust, maintainable codebase
+
+[Full Changelog →](https://github.com/Stianlars1/css-vars-assistant/blob/main/CHANGELOG.md)
+
+
+
 ---
 ## ✨ What's new in 1.4.2
 

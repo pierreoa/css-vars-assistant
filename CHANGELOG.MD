@@ -4,19 +4,35 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 
 ---
-## [1.4.3] – 2025‑06‑13
+
+## [1.4.3] – 2025‑06‑15
 
 ### Added
-* Usage stats, dependency list, related variables and file locations in documentation.
+
+- Full support for IntelliJ Platform 2024.1+ Documentation API (via new `DocumentationTargetProvider` and `PsiDocumentationTargetProvider`), with fallback for 241+ builds.
+- Shared documentation helpers and HTML builder for both v1 and v2 APIs.
+- Usage stats, dependency lists, related variables, and file locations in documentation popups.
+- Special indicator (↗) in completion popup for deeply nested/recursively resolved variables.
+- Improved/optimized DebugImportResolution helper.
+- Auto index version bump for cache invalidation.
 
 ### Changed
-* Completion and docs use last value per context to honor cascade.
-* Improved context labels for complex media queries.
+
+- Completion and docs now use the last value per context to honor cascade (last-wins).
+- Improved context labels and handling for complex media queries.
+- Refactored completion logic for efficiency, better color handling, and maintainability.
+- Preprocessor variable resolution now supports more complex expressions and improved error handling.
+- Centralized index versioning.
+- Updated plugin.xml to register new documentation providers for 2024.1+ and maintain fallback for older IDEs.
 
 ### Fixed
-* Minor arithmetic resolution bugs for preprocessor variables.
+
+- Minor arithmetic resolution bugs for preprocessor variables.
+- Documentation rendering bugs and context collapsing issues.
+- Improved color parsing and WCAG contrast info in docs.
 
 ---
+
 ## [1.4.2] – 2025‑06‑12
 
 ### Added
