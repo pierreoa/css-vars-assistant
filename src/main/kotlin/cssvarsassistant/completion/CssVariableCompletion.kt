@@ -15,6 +15,7 @@ import com.intellij.util.ProcessingContext
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
+import cssvarsassistant.documentation.lastLocalValueInFile
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
@@ -104,14 +105,19 @@ class CssVariableCompletion : CompletionContributor() {
                                 } else null
                             }
 
-                            val uniquePairs = valuePairs
-                                .groupBy { it.first }
-                                .mapValues { (_, list) -> list.last() }
-                                .values.toList()
 
-                            val mainValue = uniquePairs
-                                .find { it.first == "default" }?.second
-                                ?: uniquePairs.first().second
+                            val uniquePairs = valuePairs
+                                .asReversed()
+                                .distinctBy { it.first to it.second }     // beholder én rad per (context,value)
+                                .asReversed()
+
+                            /* --- finn cascade-vinner --- */
+                            val localOverride = lastLocalValueInFile(params.position.text, rawName)
+
+                            val mainValue = localOverride
+                                ?: uniquePairs.filter { it.first == "default" }.lastOrNull()?.second
+                                ?: uniquePairs.last().second
+
 
                             val docEntry = allVals.firstOrNull {
                                 it.substringAfter(DELIMITER)
@@ -123,6 +129,8 @@ class CssVariableCompletion : CompletionContributor() {
 
                             val values = uniquePairs.map { it.second }.distinct()
                             val isAllColor = values.all { ColorParser.parseCssColor(it) != null }
+
+
 
                             entries += Entry(
                                 rawName,
@@ -410,4 +418,12 @@ class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
         icon1.paintIcon(c, g, x, y)
         icon2.paintIcon(c, g, x + icon1.iconWidth + 2, y)
     }
+}
+
+private fun lastLocalValue(params: CompletionParameters, varName: String): String? {
+    val text = params.originalFile.text
+    val regex = Regex("""\Q$varName\E\s*:\s*([^;]+);""")
+    return regex.findAll(text)
+        .map { it.groupValues[1].trim() }
+        .lastOrNull()
 }

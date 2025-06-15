@@ -5,7 +5,7 @@
 **Author:** Stian Larsen  
 **Repo:** [github.com/Stianlars1/css-vars-assistant](https://github.com/Stianlars1/css-vars-assistant)
 
-**Links:** 
+**Links:**
 - [Official Plugin Website](https://www.css-variables-assistant.dev)
 - [Official JetBrains Marketplace page](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant)
 - [Stian Larsen](https://stianlarsen.com)
@@ -24,6 +24,9 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
 | **↗ Derived var indicator**  | Recursive/derived variable completions now show a special indicator (↗).                        |
 | **🔎 Debug import resolution**| Improved DebugImportResolution helper for easier tracing of variable origins and import chains. |
 | **🧠 Context/cascade logic** | Completions and docs now always use the last value per context (CSS cascade honored).           |
+| **🎯 CSS cascade compliance** | Fixed critical bug where local declarations now correctly override imported values, following proper CSS cascade rules. |
+| **🏆 Winner-first docs** | The actual winning value is now shown first in documentation tables for immediate clarity. |
+| **📖 Derived variable legend**  | Documentation now includes an explanation of the ↗ symbol when variables are resolved through imports or references. |
 | **⚡ Robustness & accuracy** | Smarter context labels, improved media query parsing, color parsing, and documentation rendering. |
 | **🚀 Performance & refactors**| Faster, more maintainable codebase with centralized index versioning and better caching.        |
 
@@ -54,6 +57,8 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
     - Context labels (Default, Dark, min-width, etc.)
     - Color swatches and contrast info
     - Dynamic columns: *px Eq.*, *Hex*, *WCAG* appear only when relevant
+    - **CSS cascade compliance:** Shows the actual winning value first, following proper CSS cascade rules
+    - **Legend for derived variables:** Explains the ↗ symbol for variables resolved through imports
 - **JSDoc-style comments:** Auto-parsing and display of `@name`, `@description`, and `@example`.
 - **Advanced import resolution:** Follows and indexes imports across `CSS`, `SCSS`, `SASS` & `LESS`.
 - **Debugging tools:** Trace variable origins and import chains visually.
@@ -82,7 +87,7 @@ Open **Settings → Tools → CSS Variables Assistant**
 Need to verify *exactly* which files your `@import`s resolve to?
 1. **Right-click** any *.css / .scss / .sass / .less* file in the Project view <br>
    *or* inside the editor.
-2. Select **“Debug CSS Import Resolution”**.
+2. Select **"Debug CSS Import Resolution"**.
 3. A dialog shows:
     * full import tree (`@import` depth-limited)
     * circular-reference warnings

@@ -15,6 +15,7 @@ import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
+
 private val LOG = Logger.getInstance("cssvarsassistant.docHelpers")
 
 fun resolveVarValue(
@@ -96,3 +97,12 @@ fun extractCssVariableName(element: PsiElement): String? =
         }
 
 
+/**
+ * Returnerer siste deklarerte verdi for varName i given PsiElement sin fil.
+ * Brukes for å finne cascade-vinneren uavhengig av index-rekkefølge.
+ */
+fun lastLocalValueInFile(fileText: String, varName: String): String? =
+    Regex("""\Q$varName\E\s*:\s*([^;]+);""")
+        .findAll(fileText)
+        .map { it.groupValues[1].trim() }
+        .lastOrNull()

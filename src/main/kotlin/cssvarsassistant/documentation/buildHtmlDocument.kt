@@ -12,13 +12,22 @@ fun buildHtmlDocument(
     varName: String,
     doc: CssVarDoc,
     sorted: List<Triple<String, ResolutionInfo, String>>,
-    showPixelCol: Boolean
+    showPixelCol: Boolean,
+    winnerIndex: Int = -1  // Default for backward compatibility
 ): String {
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
     val showWcagCol = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
     val showHexCol = sorted.any { (_, r, _) ->
         ColorParser.parseCssColor(r.resolved)?.let { !r.resolved.trim().startsWith("#") } ?: false
+    }
+
+    val winnerFirstSorted = if (winnerIndex >= 0) {
+        val winner = sorted[winnerIndex]
+        val others = sorted.filterIndexed { index, _ -> index != winnerIndex }
+        listOf(winner) + others
+    } else {
+        sorted
     }
 
     /* ── inline-CSS helpers (survive IntelliJ trimming) ────────────────────── */
@@ -39,6 +48,14 @@ fun buildHtmlDocument(
         .append(DocumentationMarkup.DEFINITION_END)
         .append(DocumentationMarkup.CONTENT_START)
 
+    val hasResolvedValues = winnerFirstSorted.any { (_, resInfo, _) ->
+        resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved
+    }
+
+    if (hasResolvedValues) {
+        sb.append("<p><small><b>Legend:</b> ↗ indicates a value resolved through variable references or imports</small></p>")
+    }
+
     /* ── table header ─────────────────────────────────────────────────────── */
     sb.append(
         """
@@ -57,9 +74,13 @@ fun buildHtmlDocument(
     sb.append("</tr>")
 
     /* ── table rows ───────────────────────────────────────────────────────── */
-    sorted.forEach { (ctx, resInfo, _) ->
+    winnerFirstSorted.forEachIndexed { displayIndex, (ctx, resInfo, _) ->
         ProgressManager.checkCanceled()
 
+        val isWinner = displayIndex == 0 && winnerIndex >= 0
+        val isOverridden = !isWinner && ctx == "default" && displayIndex > 0
+
+        val rowStyleExtra = if (isWinner) "font-weight:bold;" else ""
         val rawValue = resInfo.resolved
         val colorObj = ColorParser.parseCssColor(rawValue)
         val isColour = colorObj != null
@@ -78,19 +99,26 @@ fun buildHtmlDocument(
         val hexValue = colorObj?.toHex() ?: "—"
 
         /* –– row –– */
-        sb.append("<tr>")
+        sb.append("<tr style='$rowStyleExtra'>")
             .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
             .append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
             .append("<td $rowStyle><nobr>")
             .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
 
+
+        // Mark overridden values
+        if (isOverridden) {
+            sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
+        }
+
+        // Add resolution indicator
         if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved)
             sb.append(
-                """&nbsp;<span title="${StringUtil.escapeXmlEntities(resInfo.steps.joinToString(" → "))}" 
-                            $rowResolvedStyle>↗</span>"""
+                """&nbsp;<small title="${StringUtil.escapeXmlEntities(resInfo.steps.joinToString(" → "))}" 
+                            $rowResolvedStyle>↗</small>"""
             )
         sb.append("</nobr></td>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr)}</nobr></td>")
+            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
             .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
 
         if (showPixelCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")

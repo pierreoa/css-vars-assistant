@@ -12,17 +12,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 - **Dynamic value-table columns** – documentation now auto-adds *px Eq.*, *Hex* and *WCAG* columns when relevant.
 - **Recursively/derived variable completions** are now marked with (↗).
 - **Improved DebugImportResolution helper** for tracing variable origins and import chains.
+- **Legend for derived variables** – documentation now includes an explanation of the ↗ symbol when variables are resolved through imports or references.
 
 ### Changed
 
 - **Completions and docs cascading logic** – now use the last value per context (cascading logic).
 - **Improved context labeling** – media query parsing, color handling, and documentation rendering.
 - **Centralized index versioning** – improved caching, and greater maintainability.
+- **Winner-first documentation** – the actual winning value is now shown first in documentation tables for immediate clarity.
 
 ### Fixed
 
+- **CSS cascade compliance** – local declarations now correctly override imported values, following proper CSS cascade rules.
 - **Minor bugs in arithmetic resolution** for preprocessors.
 - **Improved context collapsing** – color parsing, and documentation bugs.
+- **Improved UX hierarchy** – better visual distinction between winning values (bold) and overridden declarations.
+
 ---
 
 ## [1.4.2] – 2025‑06‑12
