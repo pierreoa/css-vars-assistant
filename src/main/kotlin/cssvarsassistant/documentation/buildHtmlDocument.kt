@@ -31,9 +31,9 @@ fun buildHtmlDocument(
     }
 
     /* ── inline-CSS helpers (survive IntelliJ trimming) ────────────────────── */
-    val headerStyle = "style='color:#F2F2F2;font-size:16px;padding:2px 4px;border-bottom:1px solid #BABABA;'"
-    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;font-size:14px;'"
-    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:10px!important;'"
+    val headerStyle = "style='color:#F2F2F2;font-size:11px;padding:2px 4px;border-bottom:1px solid #BABABA;font-weight:bold;'"
+    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;font-size:10px;'"
+    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:9px!important;'"
 
     /* ── builder start ─────────────────────────────────────────────────────── */
     val sb = StringBuilder()
@@ -60,7 +60,7 @@ fun buildHtmlDocument(
     sb.append(
         """
         <p><b>Values:</b></p>
-        <table style="border-collapse:collapse;table-layout:auto;font-size:10px;">
+        <table style="border-collapse:collapse;table-layout:auto;font-size:9px;">
           <tr>
             <th $headerStyle><nobr>Context</nobr></th>
             <th $headerStyle>&nbsp;</th>
@@ -104,7 +104,6 @@ fun buildHtmlDocument(
             .append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
             .append("<td $rowStyle><nobr>")
             .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
-
 
         // Mark overridden values
         if (isOverridden) {
@@ -163,7 +162,6 @@ fun buildHtmlDocument(
 fun java.awt.Color.toHex(): String =
     "#%02x%02x%02x".format(red, green, blue)
 
-
 fun contextLabel(ctx: String, isColor: Boolean): String {
     if (ctx == "default") return if (isColor) "Light mode" else "Default"
 
@@ -212,7 +210,5 @@ fun contextLabel(ctx: String, isColor: Boolean): String {
     }
 }
 
-
 fun colorSwatchHtml(css: String): String =
     ColorParser.parseCssColor(css)?.let { "<font color='${it.toHex()}'>&#9632;</font>" } ?: "&nbsp;"
-
