@@ -9,7 +9,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVariableCompletion
 import cssvarsassistant.documentation.buildHtmlDocument
-import cssvarsassistant.documentation.extractVariableName
+import cssvarsassistant.documentation.extractCssVariableName
 import cssvarsassistant.documentation.resolveVarValue
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
@@ -37,7 +37,7 @@ class CssVariableDocumentation : AbstractDocumentationProvider() {
             ProgressManager.checkCanceled()
 
             val settings = CssVarsAssistantSettings.getInstance()
-            val varName = extractVariableName(element) ?: return null
+            val varName = extractCssVariableName(element) ?: return null
             val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
 
             /* ------------------- gather all values for this variable -------- */

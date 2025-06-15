@@ -45,7 +45,7 @@
                 implementation="cssvarsassistant.documentation.v2.CssVariablePsiDocumentationTargetProvider"/>
 
         <!-- override built‑in CSS/SCSS docs -->
-        <!-- <lang.documentationProvider
+         <lang.documentationProvider
                  language="CSS"
                  implementationClass="cssvarsassistant.documentation.v1.CssVariableDocumentation"
                  order="first"/>
@@ -53,10 +53,14 @@
                  language="Sass"
                  implementationClass="cssvarsassistant.documentation.v1.CssVariableDocumentation"
                  order="first"/>
+        <lang.documentationProvider
+                language="SCSS"
+                implementationClass="cssvarsassistant.documentation.v1.CssVariableDocumentation"
+                order="first"/>
          <lang.documentationProvider
                  language="LESS"
                  implementationClass="cssvarsassistant.documentation.v1.CssVariableDocumentation"
-                 order="first"/>-->
+                 order="first"/>
 
         <applicationConfigurable
                 id="cssvarsassistant.settings"

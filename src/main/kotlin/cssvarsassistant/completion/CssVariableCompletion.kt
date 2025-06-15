@@ -156,7 +156,7 @@ class CssVariableCompletion : CompletionContributor() {
                                 else -> AllIcons.FileTypes.Css
                             }
 
-                            /* ---- valueText m/ ↪ hvis avledet -------------- */
+                            /* ---- valueText m/ ↗ hvis avledet -------------- */
                             val valueText = when {
                                 e.isAllColor && e.allValues.size > 1 && settings.showContextValues ->
                                     e.allValues.joinToString(" / ") { (ctx, v) ->
@@ -171,7 +171,7 @@ class CssVariableCompletion : CompletionContributor() {
                                         append(" (+${e.allValues.size - 1})")
                                     }
                                 }
-                            }.let { if (e.derived) "$it ↪" else it }
+                            }.let { if (e.derived) "$it ↗" else it }
 
 
                             val element = LookupElementBuilder

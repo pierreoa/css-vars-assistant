@@ -198,13 +198,13 @@ class ValueUtilTest {
     @Test
     fun `sorts padding variables correctly ascending`() {
         val paddingEntries = listOf(
-            CssVariableCompletion.Entry("--padding-2xl", "padding-2xl", "48px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-2xs", "padding-2xs", "4px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-lg", "padding-lg", "32px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-md", "padding-md", "24px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-sm", "padding-sm", "16px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-xl", "padding-xl", "40px", emptyList(), "", false),
-            CssVariableCompletion.Entry("--padding-xs", "padding-xs", "8px", emptyList(), "", false)
+            CssVariableCompletion.Entry("--padding-2xl", "padding-2xl", "48px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-2xs", "padding-2xs", "4px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-lg", "padding-lg", "32px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-md", "padding-md", "24px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-sm", "padding-sm", "16px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-xl", "padding-xl", "40px", emptyList(), "", false, false),
+            CssVariableCompletion.Entry("--padding-xs", "padding-xs", "8px", emptyList(), "", false, false)
         )
 
         val comparator = Comparator<CssVariableCompletion.Entry> { a, b ->

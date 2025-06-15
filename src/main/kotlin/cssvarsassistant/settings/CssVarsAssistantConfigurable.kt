@@ -56,8 +56,6 @@ class CssVarsAssistantConfigurable : Configurable {
             1
         )
     )
-// Enhanced re-index button implementation
-// Replace the existing reindexButton ActionListener in CssVarsAssistantConfigurable.kt
 
     private val reindexButton = JButton("Re-index variables now…").apply {
         toolTipText = "Flush caches and rebuild the CSS variable index"

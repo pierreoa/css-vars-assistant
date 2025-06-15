@@ -15,6 +15,7 @@ import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
+private val LOG = Logger.getInstance("cssvarsassistant.docHelpers")
 
 fun resolveVarValue(
     project: Project,
@@ -71,7 +72,7 @@ fun resolveVarValue(
     } catch (e: ProcessCanceledException) {
         throw e
     } catch (e: Exception) {
-        Logger.getInstance("CssVarDoc").warn("Error resolving variable value", e)
+        LOG.warn("Error resolving variable value", e)
         return ResolutionInfo(raw, raw, steps)
     }
 }
@@ -83,7 +84,7 @@ private fun findPreprocessorVariableValue(project: Project, varName: String): St
     } catch (e: ProcessCanceledException) {
         throw e
     } catch (e: Exception) {
-        Logger.getInstance("CssVarDoc").warn("Failed to resolve @$varName", e)
+        LOG.warn("Failed to resolve @$varName", e)
         null
     }
 }
@@ -95,8 +96,3 @@ fun extractCssVariableName(element: PsiElement): String? =
         }
 
 
-fun extractVariableName(el: PsiElement): String? =
-    el.text.trim().takeIf { it.startsWith("--") }
-        ?: el.parent?.text?.let {
-            Regex("""var\(\s*(--[\w-]+)\s*\)""").find(it)?.groupValues?.get(1)
-        }
