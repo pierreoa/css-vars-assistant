@@ -20,7 +20,7 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
 | Category                    | Highlights                                                                                      |
 |-----------------------------|-------------------------------------------------------------------------------------------------|
 | **📚 IntelliJ 2024.1+ docs** | Full support for the new documentation API with rich popups and fallback for older IDEs.        |
-| **🔗 Usage & dependency info**| Docs now display usage stats, dependency lists, related variables, and file locations.          |
+| **📊 Dynamic docs table** | Docs auto-add *px Eq.*, *Hex* and *WCAG* columns whenever the value type warrants it. |
 | **↗ Derived var indicator**  | Recursive/derived variable completions now show a special indicator (↗).                        |
 | **🔎 Debug import resolution**| Improved DebugImportResolution helper for easier tracing of variable origins and import chains. |
 | **🧠 Context/cascade logic** | Completions and docs now always use the last value per context (CSS cascade honored).           |
@@ -53,7 +53,7 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
     - Value tables (with px equivalents for rem/em/%/vh/vw/pt)
     - Context labels (Default, Dark, min-width, etc.)
     - Color swatches and contrast info
-    - Usage stats, dependencies, related variables, and file locations
+    - Dynamic columns: *px Eq.*, *Hex*, *WCAG* appear only when relevant
 - **JSDoc-style comments:** Auto-parsing and display of `@name`, `@description`, and `@example`.
 - **Advanced import resolution:** Follows and indexes imports across `CSS`, `SCSS`, `SASS` & `LESS`.
 - **Debugging tools:** Trace variable origins and import chains visually.

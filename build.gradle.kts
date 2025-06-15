@@ -121,26 +121,25 @@ intellijPlatform {
         version = project.version.toString()
 
         description = """
-        <h2>CSS Variables Assistant</h2>
-        <p>
-          Supercharge your CSS custom properties in WebStorm and IntelliJ-based IDEs with advanced autocomplete, documentation, and preprocessor support.
-        </p>
-        <ul>
-          <li><b>Instant variable lookup</b> – LESS and SCSS variables are now indexed for blazing-fast completions and documentation.</li>
-          <li><b>Smart Autocomplete</b> – Context-aware suggestions inside <code>var(--…)</code>, <code>@less</code>, and <code>${'$'}scss</code> with value-based sorting (by px size, color, or number).</li>
-          <li><b>Quick Documentation</b> (<kbd>Ctrl+Q</kbd>) – Shows value tables (with pixel equivalents for rem/em/%/vh/vw/pt), context labels (Default, Dark, min-width, etc.), and color swatches.</li>
-          <li><b>JSDoc‑style</b> comment support – <code>@name</code>, <code>@description</code>, <code>@example</code> auto-parsed and displayed.</li>
-          <li><b>Advanced @import resolution</b> – Traverses and indexes imports across CSS, SCSS, SASS & LESS, with configurable scope and max depth.</li>
-          <li><b>Configurable sorting</b> – Completion list order is customizable: ascending or descending by value.</li>
-          <li><b>Context ranking</b> – Contexts (Default, Light, Dark, min/max-width, etc.) are ranked for optimal relevance.</li>
-          <li><b>Debugging tools</b> – Trace variable origins and import chains visually for easy debugging.</li>
-          <li><b>Performance & robustness</b> – Sophisticated caching, race condition fixes, and extensive automated tests ensure fast, reliable operation even in large projects.</li>
-          <li><b>Works everywhere</b> – CSS, SCSS, SASS, LESS.</li>
-        </ul>
-        <p>
-          <b>New in 1.4.2:</b> Preprocessor variable index, value-based completion sorting, pixel equivalents in docs, smarter var() detection, and more!
-        </p>
-    """.trimIndent()
+<h2>CSS Variables Assistant</h2>
+<p>
+  Supercharge your CSS custom properties and pre-processor variables in JetBrains IDEs with advanced autocomplete, rich documentation, and powerful debugging tools.
+</p>
+<ul>
+  <li><b>Instant variable lookup</b> – blazing-fast completions for <code>CSS</code>, <code>SCSS</code>, <code>SASS</code> and <code>LESS</code> variables.</li>
+  <li><b>Smart autocomplete</b> – context-aware suggestions inside <code>var(--…)</code>, <code>@less</code> and <code>${'$'}scss</code>, sorted by value or context.</li>
+  <li><b>Rich documentation pop-ups</b> – value tables (px equivalents), context labels, colour swatches with contrast info, plus <i>dynamic</i> <code>px Eq.</code>, <code>Hex</code> and <code>WCAG</code> columns that appear only when relevant. :contentReference[oaicite:3]{index=3}</li>
+  <li><b>IntelliJ 2024.1+ API support</b> – leverages the new docs API for richer pop-ups, with graceful fallback for older IDEs.</li>
+  <li><b>Derived-variable indicator</b> – alias / recursive completions are marked with <code>↗</code> so you instantly know the value is inherited. :contentReference[oaicite:4]{index=4}</li>
+  <li><b>Advanced <code>@import</code> resolution</b> – follows and indexes nested imports with depth and scope controls.</li>
+  <li><b>Debugging tools</b> – visual tracing of variable origins and import chains via the “Debug CSS Import Resolution” action.</li>
+  <li><b>Configurable sorting &amp; ranking</b> – numeric value order (asc/desc) and logical context ranking (Default → Dark / media queries).</li>
+  <li><b>Performance &amp; robustness</b> – centralised index versioning, smarter caching and race-condition fixes keep everything fast in large projects.</li>
+</ul>
+<p>
+  <b>New in 1.5.0:</b> IntelliJ 2024.1+ docs, dynamic table columns, <code>↗</code> badge, better import tracing, cascade-aware values, and major performance refactors.
+</p>
+""".trimIndent()
 
         vendor {
             name = "StianLarsen"
@@ -154,22 +153,26 @@ intellijPlatform {
 
         changeNotes = """
 <h2>1.5.0 – 2025-06-15</h2>
+
 <h3>Added</h3>
 <ul>
-  <li><b>IntelliJ 2024.1+ Documentation API:</b> Full support for the new documentation API with rich popups and fallback for older IDEs.</li>
-  <li><b>Usage & dependency info in docs:</b> Docs now display usage stats, dependency lists, related variables, and file locations.</li>
-  <li><b>Derived variable indicator:</b> Completions mark recursively/derived variable values with a special indicator (↪).</li>
-  <li><b>Debug import resolution improvements</b> for easier tracing of variable origins and import chains.</li>
+  <li><b>IntelliJ 2024.1+ documentation API</b> – rich pop-ups with graceful fallback for older builds.</li>
+  <li><b>Dynamic value-table columns</b> – docs auto-add <i>px Eq.</i>, <i>Hex</i> and <i>WCAG</i> when relevant.</li>
+  <li><b>↗ Derived-value indicator</b> for alias / recursive completions.</li>
+  <li>Improved DebugImportResolution helper for tracing variable origins and import chains.</li>
 </ul>
+
 <h3>Changed</h3>
 <ul>
-  <li>Completions and docs now always use the last value per context (CSS cascade honored).</li>
-  <li>Smarter context labels, improved media query parsing, color parsing, and documentation rendering.</li>
-  <li>Centralized index versioning and better caching for performance and maintainability.</li>
+  <li><b>Cascade-aware logic</b> – completions and docs now use the last value per context.</li>
+  <li>Smarter context labels, media-query parsing, colour handling and documentation rendering.</li>
+  <li>Centralised index versioning, improved caching and overall maintainability.</li>
 </ul>
+
 <h3>Fixed</h3>
 <ul>
-  <li>Minor bugs in arithmetic resolution for preprocessors, improved context collapsing, color parsing, and documentation bugs.</li>
+  <li>Minor arithmetic-resolution bugs in pre-processors.</li>
+  <li>Improved context collapsing, colour parsing and miscellaneous documentation issues.</li>
 </ul>
 """.trimIndent()
 

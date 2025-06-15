@@ -9,8 +9,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-
 ### Added
 
 - IntelliJ 2024.1+ documentation API support with rich popups and fallback for older builds.
-- Docs now display usage stats, dependency lists, related variables, and file locations.
-- Recursively/derived variable completions are now marked with (↪).
+- **Dynamic value-table columns** – documentation now auto-adds *px Eq.*, *Hex* and *WCAG* columns when relevant.
+- Recursively/derived variable completions are now marked with (↗).
 - Improved DebugImportResolution helper for tracing variable origins and import chains.
 
 ### Changed
