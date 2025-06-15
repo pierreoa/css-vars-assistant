@@ -4,32 +4,25 @@ All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 
 ---
-
-## [1.4.3] – 2025‑06‑15
+## [1.5.0] – 2025‑06‑15
 
 ### Added
 
-- Full support for IntelliJ Platform 2024.1+ Documentation API (via new `DocumentationTargetProvider` and `PsiDocumentationTargetProvider`), with fallback for 241+ builds.
-- Shared documentation helpers and HTML builder for both v1 and v2 APIs.
-- Usage stats, dependency lists, related variables, and file locations in documentation popups.
-- Special indicator (↗) in completion popup for deeply nested/recursively resolved variables.
-- Improved/optimized DebugImportResolution helper.
-- Auto index version bump for cache invalidation.
+- IntelliJ 2024.1+ documentation API support with rich popups and fallback for older builds.
+- Docs now display usage stats, dependency lists, related variables, and file locations.
+- Recursively/derived variable completions are now marked with (↪).
+- Improved DebugImportResolution helper for tracing variable origins and import chains.
 
 ### Changed
 
-- Completion and docs now use the last value per context to honor cascade (last-wins).
-- Improved context labels and handling for complex media queries.
-- Refactored completion logic for efficiency, better color handling, and maintainability.
-- Preprocessor variable resolution now supports more complex expressions and improved error handling.
-- Centralized index versioning.
-- Updated plugin.xml to register new documentation providers for 2024.1+ and maintain fallback for older IDEs.
+- Completions and docs now use the last value per context (cascading logic).
+- Improved context labeling, media query parsing, color handling, and documentation rendering.
+- Centralized index versioning, improved caching, and greater maintainability.
 
 ### Fixed
 
-- Minor arithmetic resolution bugs for preprocessor variables.
-- Documentation rendering bugs and context collapsing issues.
-- Improved color parsing and WCAG contrast info in docs.
+- Minor bugs in arithmetic resolution for preprocessors.
+- Improved context collapsing, color parsing, and documentation bugs.
 
 ---
 

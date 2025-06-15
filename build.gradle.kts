@@ -156,21 +156,20 @@ intellijPlatform {
 <h2>1.5.0 – 2025-06-15</h2>
 <h3>Added</h3>
 <ul>
-  <li><b>IntelliJ 2024.1+ Documentation API:</b> New documentation popup support for latest IDEs with fallback for older builds.</li>
-  <li><b>Completion improvements:</b> Recursive/derived variable indicator (↗), better context handling, and more informative popups.</li>
-  <li><b>Documentation enhancements:</b> Now includes usage stats, dependencies, related variables, and file locations.</li>
-  <li><b>DebugImportResolution improvements</b> for easier variable tracing.</li>
+  <li><b>IntelliJ 2024.1+ Documentation API:</b> Full support for the new documentation API with rich popups and fallback for older IDEs.</li>
+  <li><b>Usage & dependency info in docs:</b> Docs now display usage stats, dependency lists, related variables, and file locations.</li>
+  <li><b>Derived variable indicator:</b> Completions mark recursively/derived variable values with a special indicator (↪).</li>
+  <li><b>Debug import resolution improvements</b> for easier tracing of variable origins and import chains.</li>
 </ul>
 <h3>Changed</h3>
 <ul>
-  <li>Completion and docs now use last value per context to honor cascade (last-wins).</li>
-  <li>Refactored code for better performance, maintainability, and accuracy.</li>
-  <li>Preprocessor variable resolution now supports complex expressions and improved error handling.</li>
-  <li>Centralized index versioning and updated default indexing scope.</li>
+  <li>Completions and docs now always use the last value per context (CSS cascade honored).</li>
+  <li>Smarter context labels, improved media query parsing, color parsing, and documentation rendering.</li>
+  <li>Centralized index versioning and better caching for performance and maintainability.</li>
 </ul>
 <h3>Fixed</h3>
 <ul>
-  <li>Minor arithmetic resolution bugs, improved context collapsing and color parsing in docs.</li>
+  <li>Minor bugs in arithmetic resolution for preprocessors, improved context collapsing, color parsing, and documentation bugs.</li>
 </ul>
 """.trimIndent()
 

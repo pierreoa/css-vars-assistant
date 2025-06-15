@@ -13,119 +13,67 @@
 
 Supercharge your CSS custom properties and preprocessor variables in JetBrains IDEs with advanced autocomplete, documentation, and debugging tools.
 
+---
 
-## Features
+## ✨ What's new in 1.5.0
 
-- **Instant variable lookup:** Blazing-fast completions and documentation for CSS, LESS, and SCSS variables.
-- **Smart autocomplete:** Context-aware suggestions in `var(--…)`, `@less`, and `$scss` with value-based and context-based sorting.
-- **Rich documentation popups:**
-   - Value tables (with px equivalents for rem/em/%/vh/vw/pt)
-   - Context labels (Default, Dark, min-width, etc.)
-   - Color swatches and contrast info
-   - Usage stats, dependencies, related variables, and file locations
-- **JSDoc-style comments:**  
-  Parse and show `@name`, `@description`, `@example` for variables.
-- **Advanced import resolution:**  
-  Follows and indexes imports across CSS, SCSS, SASS & LESS.
-- **Debugging tools:**  
-  Trace variable origins and import chains visually.
-- **Configurable sorting:**  
-  Sort completion list by value (ascending/descending).
-- **All major preprocessors supported:**  
-  CSS, SCSS, SASS, LESS.
-
-## ✨ What's New in 1.5.0
-
-- Full IntelliJ 2024.1+ documentation API support (with fallback for 241+)
-- Usage stats, dependency lists, related variables, and file locations in documentation popups
-- Recursive/derived variable completions now show a special indicator (↪)
-- Improved DebugImportResolution helper
-- Smarter context labels and more robust, maintainable codebase
+| Category                    | Highlights                                                                                      |
+|-----------------------------|-------------------------------------------------------------------------------------------------|
+| **📚 IntelliJ 2024.1+ docs** | Full support for the new documentation API with rich popups and fallback for older IDEs.        |
+| **🔗 Usage & dependency info**| Docs now display usage stats, dependency lists, related variables, and file locations.          |
+| **↗ Derived var indicator**  | Recursive/derived variable completions now show a special indicator (↗).                        |
+| **🔎 Debug import resolution**| Improved DebugImportResolution helper for easier tracing of variable origins and import chains. |
+| **🧠 Context/cascade logic** | Completions and docs now always use the last value per context (CSS cascade honored).           |
+| **⚡ Robustness & accuracy** | Smarter context labels, improved media query parsing, color parsing, and documentation rendering. |
+| **🚀 Performance & refactors**| Faster, more maintainable codebase with centralized index versioning and better caching.        |
 
 [Full Changelog →](https://github.com/Stianlars1/css-vars-assistant/blob/main/CHANGELOG.md)
 
-
-
----
-## ✨ What's new in 1.4.2
-
-| Category                | Highlights                                                                                  |
-|-------------------------|---------------------------------------------------------------------------------------------|
-| **🛠️ Preprocessor index**      | LESS/SCSS variables are now indexed for instant lookup and resolution.                  |
-| **🔍 Smarter var() detection** | Completions work even while typing incomplete `var(` and resolve aliases more quickly.   |
-| **📏 Value-based sorting**      | Variable completions are sorted by their numeric value (asc/desc, configurable).        |
-| **📐 Pixel equivalents in docs**| Documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.              |
-| **🧠 Context sorting**          | Contexts (Default, Light, Dark, min/max-width, etc.) are now ranked logically.         |
-| **⚡ Performance & robustness** | Race conditions and duplicate completions fixed, smarter scope caching, better error handling. |
-| **🧪 Test coverage**            | Extensive automated tests for value handling, context ranking, and pixel conversion.    |
 ---
 
-## ✨ What's new in 1.4.1
+## 🏅 Previous highlights
 
-| Category | Highlights |
-|----------|------------|
-| **⚡ Faster completions** | CSS variable names are cached per project to avoid repeated index lookups. Caches clear automatically on index rebuild. |
----
-
-## ✨ What's new in 1.4.0
-
-| Category | Highlights                                                                                                                               |
-|----------|------------------------------------------------------------------------------------------------------------------------------------------|
-| **🌍 Global by default** | Plugin now indexes <code>node_modules</code> automatically – variables from external design-system packages resolve without extra setup. |
-| **🧮 Smarter arithmetic** | LESS arithmetic (e.g. <code>@var: (@base * 3)</code>) is evaluated, so completion & docs show the final numeric value.                   |
-| **🔄 Seamless migration** | Your previous scope choice is preserved; only new projects start with the global scope.                                                  |
----
-
-### Previous highlights from 1.3.1
-
-| Category | Highlights |
-|----------|------------|
-| **🔍 Enhanced debugging** | Comprehensive **Debug CSS Import Resolution** action with tree visualization, variable counting, and detailed resolution paths. |
-| **⚡ Performance improvements** | Dedicated completion cache (`CssVarCompletionCache`) and optimized memory management for faster variable resolution. |
-| **📐 Dynamic UI** | Completion popup width automatically adjusts based on longest variable name for better readability. |
-| **🔄 Better re-indexing** | Enhanced progress reporting with step-by-step feedback and improved error handling during index rebuilds. |
-| **🏗️ Architecture cleanup** | Code refactoring with extracted utility classes for better maintainability and stability. |
-
-### Previous highlights from 1.3.0
-
-| Category | Highlights |
-|----------|------------|
-| **🚀 Value resolution** | Follows chained `@less`, `$scss` and alias `var(--foo)` references – even across imported packages – until it reaches a literal value. |
-| **📦 Import cache** | Remembers every file reached via `@import`, giving instant look-ups after the first pass. |
-| **🔄 Re-index Now button** | One-click rebuild in **Settings → Tools → CSS Variables Assistant** – no more *Invalidate Caches / Restart*. |
-| **🧭 Debug action** | *Debug CSS Import Resolution* (context menu) prints the full import chain and indicates skipped circular references. |
-| **🛡️ Stability** | Race conditions fixed, proper cancellation handling, fewer `ProcessCanceledException`s in large repos. |
-
-See full details in [`CHANGELOG.MD`](./CHANGELOG.MD).
+| Category                      | Highlights                                                                                  |
+|-------------------------------|---------------------------------------------------------------------------------------------|
+| **🛠️ Preprocessor index**      | LESS/SCSS variables are now indexed for instant lookup and resolution.                      |
+| **🔍 Smarter var() detection** | Completions work even while typing incomplete `var(` and resolve aliases more quickly.       |
+| **📏 Value-based sorting**     | Variable completions are sorted by their numeric value (asc/desc, configurable).            |
+| **📐 Pixel equivalents in docs**| Documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.                  |
+| **🧠 Context sorting**         | Contexts (Default, Light, Dark, min/max-width, etc.) are now ranked logically.             |
+| **⚡ Performance & robustness**| Race conditions and duplicate completions fixed, smarter scope caching, better error handling.|
+| **🧪 Test coverage**           | Extensive automated tests for value handling, context ranking, and pixel conversion.        |
 
 ---
 
-## Core Features
+## Features
 
-* **Context-aware completion** inside `var(-- … )`
-* **Quick Documentation** (<kbd>Ctrl Q</kbd> / hover) with table, swatches, description & examples
-* **@import traversal** for CSS, SCSS, SASS & LESS with smart extension inference
-* **Recursive var() & pre-processor alias resolution**
-* **JSDoc-style tags** `@name`, `@description`, `@example`
-* Works inside **CSS / SCSS / SASS / LESS / JS / TS / JSX / TSX**
-* * **Preprocessor variable index** for instant `LESS`/`SCSS`/`SASS variable look-ups
-* **Value-based sorting** with pixel equivalents for intuitive ordering
+- **Instant variable lookup:** Blazing-fast completions and documentation for `CSS`, `SCSS`, `SASS` and `LESS` variables.
+- **Smart autocomplete:** Context-aware suggestions for `var(--…)`, `@less`, and `$scss` with value/context-based sorting.
+- **Rich documentation popups:**
+    - Value tables (with px equivalents for rem/em/%/vh/vw/pt)
+    - Context labels (Default, Dark, min-width, etc.)
+    - Color swatches and contrast info
+    - Usage stats, dependencies, related variables, and file locations
+- **JSDoc-style comments:** Auto-parsing and display of `@name`, `@description`, and `@example`.
+- **Advanced import resolution:** Follows and indexes imports across `CSS`, `SCSS`, `SASS` & `LESS`.
+- **Debugging tools:** Trace variable origins and import chains visually.
+- **Configurable sorting:** Completion list sorted by value _(ascending/descending)_.
+- **Works everywhere:** `CSS`, `SCSS`, `SASS`, `LESS`.
+
 ---
 
 ## Configuration
 
 Open **Settings → Tools → CSS Variables Assistant**
 
-| Option | Effect                                                             |
-|--------|--------------------------------------------------------------------|
-| **Indexing scope** | *Project only* • *Project + imports* (recommended) • *Full global* |
-| **Max @import depth** | 1 – 20 (default 20)                                                |
-| **Show context values** | Display dark/light & media-query variants                          |
-| **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses                       |
-| **Completion sorting** | Ascending or descending value order |
-| **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately            |
-
----
+| Option | Effect                                                                        |
+|--------|-------------------------------------------------------------------------------|
+| **Show context values** | Display dark/light & media-query variants                                     |
+| **Allow IDE built-in completions** | Fall back to IntelliJ suggestions for misses                                  |
+| **Indexing scope** | *Project only* • *Project + imports* (experimental) • *Full global* (default) |
+| **Max @import depth** | 1 – 20 (default 20)                                                           |
+| **Completion sorting** | Ascending or descending value order                                           |
+| **🔄 Re-index Now** | Flush caches and rebuild the variable index immediately                       |
 
 ---
 
