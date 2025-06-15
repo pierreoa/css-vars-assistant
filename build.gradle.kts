@@ -128,16 +128,18 @@ intellijPlatform {
 <ul>
   <li><b>Instant variable lookup</b> – blazing-fast completions for <code>CSS</code>, <code>SCSS</code>, <code>SASS</code> and <code>LESS</code> variables.</li>
   <li><b>Smart autocomplete</b> – context-aware suggestions inside <code>var(--…)</code>, <code>@less</code> and <code>${'$'}scss</code>, sorted by value or context.</li>
-  <li><b>Rich documentation pop-ups</b> – value tables (px equivalents), context labels, colour swatches with contrast info, plus <i>dynamic</i> <code>px Eq.</code>, <code>Hex</code> and <code>WCAG</code> columns that appear only when relevant. :contentReference[oaicite:3]{index=3}</li>
+  <li><b>Rich documentation pop-ups</b> – value tables (px equivalents), context labels, color swatches with contrast info, plus <i>dynamic</i> <code>px Eq.</code>, <code>Hex</code> and <code>WCAG</code> columns that appear only when relevant.</li>
   <li><b>IntelliJ 2024.1+ API support</b> – leverages the new docs API for richer pop-ups, with graceful fallback for older IDEs.</li>
-  <li><b>Derived-variable indicator</b> – alias / recursive completions are marked with <code>↗</code> so you instantly know the value is inherited. :contentReference[oaicite:4]{index=4}</li>
+  <li><b>Derived-variable indicator</b> – alias / recursive completions are marked with <code>↗</code> so you instantly know the value is inherited.</li>
+  <li><b>JSDoc-style comments</b> – auto-parsing and display of <code>@name</code>, <code>@description</code>, and <code>@example</code>.</li>
   <li><b>Advanced <code>@import</code> resolution</b> – follows and indexes nested imports with depth and scope controls.</li>
-  <li><b>Debugging tools</b> – visual tracing of variable origins and import chains via the “Debug CSS Import Resolution” action.</li>
+  <li><b>Debugging tools</b> – visual tracing of variable origins and import chains via the "Debug CSS Import Resolution" action.</li>
   <li><b>Configurable sorting &amp; ranking</b> – numeric value order (asc/desc) and logical context ranking (Default → Dark / media queries).</li>
-  <li><b>Performance &amp; robustness</b> – centralised index versioning, smarter caching and race-condition fixes keep everything fast in large projects.</li>
+  <li><b>Performance &amp; robustness</b> – centralized index versioning, smarter caching and race-condition fixes keep everything fast in large projects.</li>
+  <li><b>Works everywhere</b> – <code>CSS</code>, <code>SCSS</code>, <code>SASS</code>, <code>LESS</code>.</li>
 </ul>
 <p>
-  <b>New in 1.5.0:</b> IntelliJ 2024.1+ docs, dynamic table columns, <code>↗</code> badge, better import tracing, cascade-aware values, and major performance refactors.
+  <b>New in 1.5.0:</b> IntelliJ 2024.1+ documentation API support, dynamic value-table columns, recursively/derived variable completions marked with (↗), improved DebugImportResolution helper, cascading logic for completions and docs, and centralized index versioning.
 </p>
 """.trimIndent()
 
@@ -156,23 +158,23 @@ intellijPlatform {
 
 <h3>Added</h3>
 <ul>
-  <li><b>IntelliJ 2024.1+ documentation API</b> – rich pop-ups with graceful fallback for older builds.</li>
-  <li><b>Dynamic value-table columns</b> – docs auto-add <i>px Eq.</i>, <i>Hex</i> and <i>WCAG</i> when relevant.</li>
-  <li><b>↗ Derived-value indicator</b> for alias / recursive completions.</li>
-  <li>Improved DebugImportResolution helper for tracing variable origins and import chains.</li>
+  <li><b>IntelliJ 2024.1+ documentation API support</b> with rich popups and fallback for older builds.</li>
+  <li><b>Dynamic value-table columns</b> – documentation now auto-adds <i>px Eq.</i>, <i>Hex</i> and <i>WCAG</i> columns when relevant.</li>
+  <li><b>Recursively/derived variable completions</b> are now marked with (↗).</li>
+  <li><b>Improved DebugImportResolution helper</b> for tracing variable origins and import chains.</li>
 </ul>
 
 <h3>Changed</h3>
 <ul>
-  <li><b>Cascade-aware logic</b> – completions and docs now use the last value per context.</li>
-  <li>Smarter context labels, media-query parsing, colour handling and documentation rendering.</li>
-  <li>Centralised index versioning, improved caching and overall maintainability.</li>
+  <li><b>Completions and docs cascading logic</b> – now use the last value per context (cascading logic).</li>
+  <li><b>Improved context labeling</b> – media query parsing, color handling, and documentation rendering.</li>
+  <li><b>Centralized index versioning</b> – improved caching, and greater maintainability.</li>
 </ul>
 
 <h3>Fixed</h3>
 <ul>
-  <li>Minor arithmetic-resolution bugs in pre-processors.</li>
-  <li>Improved context collapsing, colour parsing and miscellaneous documentation issues.</li>
+  <li><b>Minor bugs in arithmetic resolution</b> for preprocessors.</li>
+  <li><b>Improved context collapsing</b> – color parsing, and documentation bugs.</li>
 </ul>
 """.trimIndent()
 
