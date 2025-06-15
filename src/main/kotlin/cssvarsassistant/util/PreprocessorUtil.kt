@@ -126,6 +126,8 @@ object PreprocessorUtil {
             else -> null
         } ?: return null
 
+        if (resultNum.isNaN() || resultNum.isInfinite()) return null
+
         return format(resultNum, unit)
     }
 
