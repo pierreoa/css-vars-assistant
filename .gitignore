@@ -58,3 +58,5 @@ build/distributions/
 .intellijPlatform/
 .kotlin/
 *.salive
+build/generated/
+

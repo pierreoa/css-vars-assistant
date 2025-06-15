@@ -1,6 +1,7 @@
 package cssvarsassistant.documentation.v2
 
 import com.intellij.model.Pointer
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.platform.backend.documentation.DocumentationResult
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.presentation.TargetPresentation
@@ -11,6 +12,7 @@ class CssVariableDocumentationTarget(
     private val element: PsiElement,
     private val varName: String
 ) : DocumentationTarget {
+    private val LOG = Logger.getInstance(CssVariableDocumentationTarget::class.java)
 
 
     override fun computePresentation(): TargetPresentation =
@@ -19,7 +21,7 @@ class CssVariableDocumentationTarget(
             .presentation()
 
     override fun computeDocumentation(): DocumentationResult? {
-        println("\n\n\n🔥 V2 API CALLED\n\n\n") // Debug marker
+        LOG.debug("V2 API called for $varName")
         val html = CssVariableDocumentationService.generateDocumentation(element, varName)
         return html?.let { DocumentationResult.documentation(it) }
     }
