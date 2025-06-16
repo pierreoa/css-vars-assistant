@@ -22,7 +22,7 @@ val CSS_VARIABLE_INDEXER_NAME = ID.create<String, String>("cssvarsassistant.inde
 class CssVariableIndex : FileBasedIndexExtension<String, String>() {
 
     override fun getName(): ID<String, String> = CSS_VARIABLE_INDEXER_NAME
-    override fun getVersion(): Int = 265  // todo: Increment before every build to import resolution changes
+    override fun getVersion(): Int = INDEX_VERSION
 
     override fun getInputFilter(): FileBasedIndex.InputFilter {
         val registry = FileTypeRegistry.getInstance()
@@ -51,13 +51,13 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
         val settings = CssVarsAssistantSettings.getInstance()
 
         try {
-            // Index the current file
-            indexFileContent(inputData.contentAsText, map)
-
             // If import resolution is enabled, also index imported files
             if (settings.shouldResolveImports) {
                 indexImportedFiles(inputData.file, inputData.project, settings, map)
             }
+            // Index the current file
+            indexFileContent(inputData.contentAsText, map)
+
         } catch (e: Exception) {
             com.intellij.openapi.diagnostic.Logger.getInstance(CssVariableIndex::class.java)
                 .debug("Error indexing file ${inputData.file.path}", e)
@@ -105,7 +105,7 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 currentDepth = 0
             )
 
-            ImportCache.get(project).add(project, importedFiles)
+            ImportCache.get(project).add(importedFiles)
 
             PreprocessorUtil.clearCache()
             CssVarCompletionCache.clearCaches()
@@ -187,15 +187,33 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 continue
             }
 
-            // Variable Extraction
             val varDecl = Regex("""(--[A-Za-z0-9\-_]+)\s*:\s*([^;]+);""").find(line)
             if (varDecl != null) {
                 val varName = varDecl.groupValues[1]
                 val value = varDecl.groupValues[2].trim()
                 val comment = lastComment ?: ""
                 val entry = "$currentContext$DELIMITER$value$DELIMITER$comment"
+
+                // PRIORITY LOGIC: Direct values (non-preprocessor) win
+                val isPreprocessorRef = value.matches(Regex("""[@$][\w-]+"""))
                 val prev = map[varName]
-                map[varName] = if (prev == null) entry else prev + ENTRY_SEP + entry
+
+                if (prev == null) {
+                    map[varName] = entry
+                } else {
+                    // If current value is direct and previous was preprocessor, override
+                    val prevEntries = prev.split(ENTRY_SEP)
+                    val hasDirectValue = prevEntries.any { prevEntry ->
+                        val prevValue = prevEntry.split(DELIMITER).getOrNull(1) ?: ""
+                        !prevValue.matches(Regex("""[@$][\w-]+"""))
+                    }
+
+                    if (!isPreprocessorRef || !hasDirectValue) {
+                        map[varName] = prev + ENTRY_SEP + entry
+                    }
+                    // else: skip preprocessor reference if we already have direct values
+                }
+
                 lastComment = null
             }
         }

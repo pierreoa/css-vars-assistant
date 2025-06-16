@@ -1,13 +1,13 @@
 package cssvarsassistant.util
 
 import cssvarsassistant.documentation.ColorParser
-import org.slf4j.LoggerFactory
+
 import java.awt.Color
 
 object ValueUtil {
     enum class ValueType { SIZE, COLOR, NUMBER, OTHER }
 
-    private val logger = LoggerFactory.getLogger(javaClass)
+    
     fun getValueType(value: String): ValueType {
         val cleaned = value.trim()
         return when {
@@ -45,7 +45,6 @@ object ValueUtil {
         val trimmed = value.trim()
         val number = Regex("""^(\d+(?:\.\d+)?)""").find(trimmed)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
 
-        logger
 
         return when {
             trimmed.endsWith("rem") -> number * 16

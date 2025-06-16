@@ -3,18 +3,33 @@ package cssvarsassistant.util
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.ProjectScope
+import com.intellij.util.containers.CollectionFactory
 import cssvarsassistant.index.ImportCache
 import cssvarsassistant.settings.CssVarsAssistantSettings
-import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Helper methods for choosing the correct [GlobalSearchScope] when
+ * looking up CSS or pre-processor variables.
+ */
 object ScopeUtil {
-    private val preprocessorScopes = ConcurrentHashMap<Project, GlobalSearchScope>()
 
     /**
-     * Scope used for CSS variable indexing. This does not change frequently and
-     * therefore does not need per-call recomputation.
+     * Prosjekt → pre-processor-scope cache.
+     *
+     * Bruker `CollectionFactory.createConcurrentWeakKeySoftValueMap` som
+     * lager en concurrent weak-key / soft-value-map. Dermed forsvinner
+     * oppføringen automatisk når [Project] blir garbage-collected eller
+     * pluginen dynamisk avlastes.
      */
-    fun effectiveCssIndexingScope(project: Project, settings: CssVarsAssistantSettings): GlobalSearchScope =
+    private val preprocessorScopes =
+        CollectionFactory.createConcurrentWeakKeySoftValueMap<Project, GlobalSearchScope>()
+
+    /* ---------- CSS scopes ------------------------------------------------ */
+
+    fun effectiveCssIndexingScope(
+        project: Project,
+        settings: CssVarsAssistantSettings
+    ): GlobalSearchScope =
         when (settings.indexingScope) {
             CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY ->
                 GlobalSearchScope.projectScope(project)
@@ -23,7 +38,7 @@ object ScopeUtil {
                 GlobalSearchScope.allScope(project)
 
             CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
-                val extra = ImportCache.get(project).get(project)
+                val extra = ImportCache.get(project).get()
                 if (extra.isEmpty())
                     GlobalSearchScope.projectScope(project)
                 else
@@ -32,33 +47,31 @@ object ScopeUtil {
             }
         }
 
-    /**
-     * Returns the current scope for resolving preprocessor variables. Cached to
-     * provide a stable hashCode for use in caches.
-     */
+    /* ---------- Pre-processor scopes -------------------------------------- */
+
     fun currentPreprocessorScope(project: Project): GlobalSearchScope =
-        preprocessorScopes.computeIfAbsent(project) { computePreprocessorScope(project) }
+        preprocessorScopes.computeIfAbsent(project) {
+            val projectRoots = ProjectScope.getProjectScope(project)
+            val libraryRoots = ProjectScope.getLibrariesScope(project)
+            val settings = CssVarsAssistantSettings.getInstance()
 
-    private fun computePreprocessorScope(project: Project): GlobalSearchScope {
-        val settings = CssVarsAssistantSettings.getInstance()
-        val projectRoots = GlobalSearchScope.projectScope(project)
-        val libraryRoots = ProjectScope.getLibrariesScope(project)
+            when (settings.indexingScope) {
+                CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY ->
+                    projectRoots.uniteWith(libraryRoots)
 
-        return when (settings.indexingScope) {
-            CssVarsAssistantSettings.IndexingScope.GLOBAL ->
-                GlobalSearchScope.allScope(project)
+                CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
+                    val extra = ImportCache.get(project).get()
+                    val base = projectRoots.uniteWith(libraryRoots)
+                    if (extra.isEmpty()) base
+                    else base.uniteWith(GlobalSearchScope.filesScope(project, extra))
+                }
 
-            CssVarsAssistantSettings.IndexingScope.PROJECT_ONLY ->
-                projectRoots.uniteWith(libraryRoots)
-
-            CssVarsAssistantSettings.IndexingScope.PROJECT_WITH_IMPORTS -> {
-                val extra = ImportCache.get(project).get(project)
-                val base = projectRoots.uniteWith(libraryRoots)
-                if (extra.isEmpty()) base
-                else base.uniteWith(GlobalSearchScope.filesScope(project, extra))
+                CssVarsAssistantSettings.IndexingScope.GLOBAL ->
+                    GlobalSearchScope.allScope(project)
             }
         }
-    }
+
+    /* ---------- Cache maintenance ----------------------------------------- */
 
     fun clearCache(project: Project) {
         preprocessorScopes.remove(project)

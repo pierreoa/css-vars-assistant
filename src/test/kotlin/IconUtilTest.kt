@@ -1,6 +1,7 @@
 package cssvarsassistant.documentation
 
 import com.intellij.util.ui.ColorIcon
+import cssvarsassistant.util.toPngDataUri
 import javax.swing.Icon
 import kotlin.test.Test
 import kotlin.test.assertTrue

@@ -1,6 +1,9 @@
+// ImportCache.kt - Enhanced version
 package cssvarsassistant.index
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import cssvarsassistant.completion.CssVarCompletionCache
@@ -10,32 +13,41 @@ import cssvarsassistant.util.ScopeUtil
 import java.util.concurrent.ConcurrentHashMap
 
 @Service(Service.Level.PROJECT)
-class ImportCache {
+class ImportCache(private val project: Project) : Disposable {
+    private val LOG = Logger.getInstance(ImportCache::class.java)
+    private val importedFiles = ConcurrentHashMap.newKeySet<VirtualFile>()
 
-    /** project → set of imported VirtualFiles */
-    private val map = ConcurrentHashMap<Project, MutableSet<VirtualFile>>()
-
-    fun add(project: Project, files: Collection<VirtualFile>) {
-        val wasEmpty = map[project]?.isEmpty() ?: true
-        map.computeIfAbsent(project) { ConcurrentHashMap.newKeySet() }.addAll(files)
+    fun add(files: Collection<VirtualFile>) {
+        val wasEmpty = importedFiles.isEmpty()
+        importedFiles.addAll(files)
 
         if (wasEmpty && files.isNotEmpty()) {
             PreprocessorUtil.clearCache()
             CssVarCompletionCache.clearCaches()
-            CssVarKeyCache.get(project).clear()
             ScopeUtil.clearCache(project)
         }
     }
 
-    fun get(project: Project): Set<VirtualFile> = map[project] ?: emptySet()
+    fun get(): Set<VirtualFile> = importedFiles.toSet()
 
-    fun clear(project: Project) {
-        map[project]?.clear()
-        // Clear caches when imports change
-        PreprocessorUtil.clearCache()
-        CssVarCompletionCache.clearCaches()
-        CssVarKeyCache.get(project).clear()
-        ScopeUtil.clearCache(project)
+    fun clear() {
+        try {
+            importedFiles.clear()
+            PreprocessorUtil.clearCache()
+            CssVarCompletionCache.clearCaches()
+            ScopeUtil.clearCache(project)
+        } catch (e: Exception) {
+            LOG.warn("Error clearing ImportCache", e)
+        }
+    }
+
+    override fun dispose() {
+        try {
+            clear()
+            LOG.debug("ImportCache disposed for project: ${project.name}")
+        } catch (e: Exception) {
+            LOG.warn("Error disposing ImportCache", e)
+        }
     }
 
     companion object {

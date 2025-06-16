@@ -1,4 +1,4 @@
-package cssvarsassistant.documentation
+package cssvarsassistant.util
 
 import com.intellij.util.ui.ImageUtil.createImage
 import java.awt.image.BufferedImage

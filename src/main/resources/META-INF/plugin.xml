@@ -9,6 +9,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <notificationGroup id="CSS Vars Assistant" displayType="BALLOON" hideFromSettings="true"/>
 
+
         <!-- your indexer & completion -->
         <fileBasedIndex implementation="cssvarsassistant.index.CssVariableIndex"/>
         <fileBasedIndex implementation="cssvarsassistant.index.PreprocessorVariableIndex"/>
@@ -38,27 +39,23 @@
                                 implementationClass="cssvarsassistant.completion.CssVariableCompletion"
                                 order="first"/>
 
-        <!-- override built‑in CSS/SCSS docs -->
-        <lang.documentationProvider
-                language="CSS"
-                implementationClass="cssvarsassistant.documentation.CssVariableDocumentation"
-                order="first"/>
-        <lang.documentationProvider
-                language="Sass"
-                implementationClass="cssvarsassistant.documentation.CssVariableDocumentation"
-                order="first"/>
-        <lang.documentationProvider
-                language="LESS"
-                implementationClass="cssvarsassistant.documentation.CssVariableDocumentation"
-                order="first"/>
 
+        <!-- New API (2023.1+) -->
+        <platform.backend.documentation.psiTargetProvider
+                implementation="cssvarsassistant.documentation.v2.CssVariablePsiDocumentationTargetProvider"/>
         <applicationConfigurable
                 id="cssvarsassistant.settings"
                 instance="cssvarsassistant.settings.CssVarsAssistantConfigurable"
                 displayName="CSS Variables Assistant"
                 parentId="tools"
         />
+
     </extensions>
+
+    <applicationListeners>
+        <listener class="cssvarsassistant.lifecycle.DynamicPluginCleanup"
+                  topic="com.intellij.ide.plugins.DynamicPluginListener"/>
+    </applicationListeners>
 
     <actions>
         <!-- Debug CSS Import Resolution Action -->

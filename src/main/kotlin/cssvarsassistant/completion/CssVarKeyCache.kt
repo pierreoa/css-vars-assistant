@@ -1,5 +1,6 @@
 package cssvarsassistant.completion
 
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
@@ -12,36 +13,40 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Scope-aware cache for CSS variable names.
- * Caches keys per effective indexing scope to keep
- * completions in sync with documentation lookup.
+ *
+ * The keys are cached **per effective indexing scope**
+ * to keep completions in sync with documentation lookup.
+ *
+ * Implements [Disposable] so that the map is cleared automatically
+ * when the project closes *or* the plugin is unloaded.
  */
 @Service(Service.Level.PROJECT)
-class CssVarKeyCache(private val project: Project) {
+class CssVarKeyCache(private val project: Project) : Disposable {
 
-    // Map: scope.hashCode() -> list of variable names in that scope
+    /** map: scopeHash -> variable names that exist in that scope */
     private val scopeToKeys = ConcurrentHashMap<Int, List<String>>()
 
-    /** Returns all CSS custom property names available in current scope */
-    fun getKeys(): List<String> {
-        val settings = CssVarsAssistantSettings.getInstance()
-        val scope = ScopeUtil.effectiveCssIndexingScope(project, settings)
-        return getKeys(scope)
-    }
-
-    /** Returns all CSS custom property names for a specific scope */
-    fun getKeys(scope: GlobalSearchScope): List<String> {
+    /**
+     * Returns all variable names that exist in the given [scope].
+     *
+     * The result is cached; call [clear] to wipe everything.
+     */
+    fun keys(scope: GlobalSearchScope): List<String> {
         val scopeHash = scope.hashCode()
+        ProgressManager.checkCanceled()
+
         scopeToKeys[scopeHash]?.let { return it }
 
-        ProgressManager.checkCanceled()
-        // Load all keys, then filter to only those that have values in this scope
+        val settings = CssVarsAssistantSettings.getInstance()
+        val effectiveScope =
+            ScopeUtil.effectiveCssIndexingScope(project, settings).intersectWith(scope)
+
         val allKeys = FileBasedIndex.getInstance()
-            // still need project to enumerate all keys
             .getAllKeys(CSS_VARIABLE_INDEXER_NAME, project)
             .filter { key ->
                 ProgressManager.checkCanceled()
                 FileBasedIndex.getInstance()
-                    .getValues(CSS_VARIABLE_INDEXER_NAME, key, scope)
+                    .getValues(CSS_VARIABLE_INDEXER_NAME, key, effectiveScope)
                     .isNotEmpty()
             }
 
@@ -50,9 +55,10 @@ class CssVarKeyCache(private val project: Project) {
     }
 
     /** Clears every scope’s cache */
-    fun clear() {
-        scopeToKeys.clear()
-    }
+    fun clear() = scopeToKeys.clear()
+
+    /** Disposable implementation – invoked automatically by the platform */
+    override fun dispose() = clear()
 
     companion object {
         @JvmStatic
