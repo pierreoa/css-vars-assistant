@@ -10,6 +10,8 @@ import cssvarsassistant.documentation.extractCssVariableName
 class CssVariablePsiDocumentationTargetProvider : PsiDocumentationTargetProvider {
 
     override fun documentationTarget(element: PsiElement, originalElement: PsiElement?): DocumentationTarget? {
+        if (!element.isValid) return null
+
         val varName = extractCssVariableName(element) ?: return null
         return CssVariableDocumentationTarget(element, varName)
     }

@@ -8,6 +8,15 @@ import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
 
+/**
+ * Documentation Target for CSS Variables using the new Documentation Target API (2023.1+).
+ *
+ * This API is recommended by JetBrains for all new documentation providers.
+ * See: https://plugins.jetbrains.com/docs/intellij/documentation.html
+ *
+ * Note: Some parts are marked @ApiStatus.Experimental but this is the official
+ * recommended approach. We suppress these warnings in build.gradle.kts.
+ */
 class CssVariableDocumentationTarget(
     private val element: PsiElement,
     private val varName: String

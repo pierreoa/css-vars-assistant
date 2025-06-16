@@ -22,9 +22,13 @@ import kotlin.math.*
 object PreprocessorUtil {
 
     private val LOG = Logger.getInstance(PreprocessorUtil::class.java)
-    private val cache = ConcurrentHashMap<Triple<Project, String, Int>, String?>()
 
-    /** Public entry-point */
+    /**
+     * Cache key uses project.hashCode() instead of Project object to avoid
+     * strong references that would pin the class-loader and block dynamic unload.
+     */
+    private val cache = ConcurrentHashMap<Triple<Int, String, Int>, String?>()
+
     fun resolveVariable(
         project: Project,
         varName: String,
@@ -34,7 +38,8 @@ object PreprocessorUtil {
         ProgressManager.checkCanceled()
         if (varName in visited) return null
 
-        val key = Triple(project, varName, scope.hashCode())
+        // FIX: Use project.hashCode() instead of project object
+        val key = Triple(project.hashCode(), varName, scope.hashCode())
         cache[key]?.let { return it }
 
         return try {
@@ -79,6 +84,7 @@ object PreprocessorUtil {
             null
         }
     }
+
 
     /* --------------------------------------------------------------------- */
     /*  Helpers                                                              */

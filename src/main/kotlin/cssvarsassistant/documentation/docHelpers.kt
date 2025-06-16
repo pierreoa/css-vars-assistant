@@ -14,9 +14,13 @@ import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 
+/* ────────────────────────────────────────────────────────────────────────── */
+
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
 
 private val LOG = Logger.getInstance("cssvarsassistant.docHelpers")
+
+/* ────────────────────── resolver (uendret) ─────────────────────────────── */
 
 fun resolveVarValue(
     project: Project,
@@ -25,7 +29,6 @@ fun resolveVarValue(
     depth: Int = 0,
     steps: List<String> = emptyList()
 ): ResolutionInfo {
-
     val settings = CssVarsAssistantSettings.getInstance()
     if (depth > settings.maxImportDepth) return ResolutionInfo(raw, raw, steps)
 
@@ -37,8 +40,10 @@ fun resolveVarValue(
             if (ref !in visited) {
                 val newSteps = steps + "var($ref)"
                 val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
-                val entries = FileBasedIndex.getInstance().getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
-                    .flatMap { it.split(ENTRY_SEP) }.filter { it.isNotBlank() }
+                val entries = FileBasedIndex.getInstance()
+                    .getValues(CSS_VARIABLE_INDEXER_NAME, ref, cssScope)
+                    .flatMap { it.split(ENTRY_SEP) }
+                    .filter { it.isNotBlank() }
 
                 val defVal = entries.mapNotNull {
                     val p = it.split(DELIMITER, limit = 3)
@@ -47,7 +52,8 @@ fun resolveVarValue(
                     list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
                 }
 
-                if (defVal != null) return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
+                if (defVal != null)
+                    return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
             }
             return ResolutionInfo(raw, raw, steps)
         }
@@ -78,8 +84,8 @@ fun resolveVarValue(
     }
 }
 
-private fun findPreprocessorVariableValue(project: Project, varName: String): String? {
-    return try {
+private fun findPreprocessorVariableValue(project: Project, varName: String): String? =
+    try {
         val freshScope = ScopeUtil.currentPreprocessorScope(project)
         PreprocessorUtil.resolveVariable(project, varName, freshScope)
     } catch (e: ProcessCanceledException) {
@@ -88,19 +94,33 @@ private fun findPreprocessorVariableValue(project: Project, varName: String): St
         LOG.warn("Failed to resolve @$varName", e)
         null
     }
+
+/* ────────────────────── **ny, robust** ekstraktor ──────────────────────── */
+
+fun extractCssVariableName(element: PsiElement): String? {
+    // Always check element validity first
+    if (!element.isValid) return null
+
+    // Safe handling of potentially null text
+    val elementText = element.text
+    if (elementText?.trim()?.startsWith("--") == true) {
+        return elementText.trim()
+    }
+
+    // Check parent element safely
+    val parent = element.parent
+    if (parent?.isValid == true) {
+        val parentText = parent.text
+        if (parentText != null) {
+            return Regex("""var\(\s*(--[\w-]+)\s*\)""").find(parentText)?.groupValues?.get(1)
+        }
+    }
+
+    return null
 }
 
-fun extractCssVariableName(element: PsiElement): String? =
-    element.text.trim().takeIf { it.startsWith("--") }
-        ?: element.parent?.text?.let {
-            Regex("""var\(\s*(--[\w-]+)\s*\)""").find(it)?.groupValues?.get(1)
-        }
+/* ─────────────────────── other helpers (uendret) ───────────────────────── */
 
-
-/**
- * Returnerer siste deklarerte verdi for varName i given PsiElement sin fil.
- * Brukes for å finne cascade-vinneren uavhengig av index-rekkefølge.
- */
 fun lastLocalValueInFile(fileText: String, varName: String): String? =
     Regex("""\Q$varName\E\s*:\s*([^;]+);""")
         .findAll(fileText)

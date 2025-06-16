@@ -105,7 +105,7 @@ class CssVariableIndex : FileBasedIndexExtension<String, String>() {
                 currentDepth = 0
             )
 
-            ImportCache.get(project).add(project, importedFiles)
+            ImportCache.get(project).add(importedFiles)
 
             PreprocessorUtil.clearCache()
             CssVarCompletionCache.clearCaches()

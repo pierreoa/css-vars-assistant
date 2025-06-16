@@ -74,7 +74,7 @@ class CssVariableCompletion : CompletionContributor() {
                         /* ---------------------------------------------------- */
                         /*  for hver variabel-key                               */
                         /* ---------------------------------------------------- */
-                        keyCache.getKeys().forEach { rawName ->
+                        keyCache.keys(cssScope).forEach { rawName ->
                             ProgressManager.checkCanceled()
 
                             val display = rawName.removePrefix("--")

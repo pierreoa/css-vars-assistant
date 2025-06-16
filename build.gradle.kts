@@ -1,8 +1,8 @@
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.ByteArrayOutputStream
-import java.io.File
 
 plugins {
     id("org.jetbrains.intellij.platform") version "2.6.0"
@@ -21,6 +21,10 @@ dependencies {
     intellijPlatform {
         webstorm("2025.1")
         bundledPlugin("com.intellij.css")
+
+        // Add verification tools (instrumentationTools() is deprecated and removed)
+        pluginVerifier()
+        zipSigner()
     }
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))
@@ -115,10 +119,20 @@ const val INDEX_VERSION = $newVersion"""
 intellijPlatform {
     sandboxContainer.set(layout.buildDirectory.dir("sandbox"))
     buildSearchableOptions = false
+
     pluginConfiguration {
         id = "cssvarsassistant"
         name = "CSS Variables Assistant"
         version = project.version.toString()
+        vendor {
+            name = "StianLarsen"
+            email = "stian.larsen@mac.com"
+            url = "https://github.com/stianlars1/css-vars-assistant"
+        }
+
+        ideaVersion {
+            sinceBuild = "241"
+        }
 
         description = """
 <h2>CSS Variables Assistant</h2>
@@ -143,17 +157,6 @@ intellijPlatform {
   <b>New in 1.5.0:</b> IntelliJ 2024.1+ documentation API support, dynamic value-table columns, recursively/derived variable completions marked with (↗), improved DebugImportResolution helper, CSS cascade compliance with winner-first documentation, and centralized index versioning.
 </p>
 """.trimIndent()
-
-        vendor {
-            name = "StianLarsen"
-            email = "stian.larsen@mac.com"
-            url = "https://github.com/stianlars1/css-vars-assistant"
-        }
-
-        ideaVersion {
-            sinceBuild = "241"
-        }
-
 
         changeNotes = """
 <h2>1.5.0 – 2025-06-15</h2>
@@ -183,14 +186,33 @@ intellijPlatform {
   <li><b>Improved UX hierarchy</b> – better visual distinction between winning values (bold) and overridden declarations.</li>
 </ul>
 """.trimIndent()
-
     }
+
     pluginVerification {
         ides {
             recommended()
         }
+
+        // Suppress experimental API warnings while keeping all critical checks
+        failureLevel.set(
+            listOf(
+                VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+                VerifyPluginTask.FailureLevel.COMPATIBILITY_WARNINGS,
+                VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+                VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+                VerifyPluginTask.FailureLevel.PLUGIN_STRUCTURE_WARNINGS,
+                VerifyPluginTask.FailureLevel.NOT_DYNAMIC,
+                VerifyPluginTask.FailureLevel.INTERNAL_API_USAGES,
+                VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
+                VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
+                VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES
+                // Note: Deliberately excluding EXPERIMENTAL_API_USAGES since we use
+                // the JetBrains-recommended V2 Documentation API
+            )
+        )
     }
 }
+
 
 tasks {
     // Register the version increment task
