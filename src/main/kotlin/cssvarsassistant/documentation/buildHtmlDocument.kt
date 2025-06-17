@@ -31,8 +31,9 @@ fun buildHtmlDocument(
     }
 
     /* ── inline-CSS helpers (survive IntelliJ trimming) ────────────────────── */
-    val headerStyle = "style='color:#F2F2F2;font-size:11px;padding:2px 4px;border-bottom:1px solid #BABABA;font-weight:bold;'"
-    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;font-size:10px;'"
+    val headerWrapperStyle =
+        "style='color:#F2F2F2;padding:2px 4px;font-weight:bold;border-bottom:1px solid #BABABA;'"
+    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;'"
     val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:9px!important;'"
 
     /* ── builder start ─────────────────────────────────────────────────────── */
@@ -60,17 +61,17 @@ fun buildHtmlDocument(
     sb.append(
         """
         <p><b>Values:</b></p>
-        <table style="border-collapse:collapse;table-layout:auto;font-size:9px;">
-          <tr>
-            <th $headerStyle><nobr>Context</nobr></th>
-            <th $headerStyle>&nbsp;</th>
-            <th $headerStyle><nobr>Value</nobr></th>
-            <th $headerStyle><nobr>Type</nobr></th>
-            <th $headerStyle><nobr>Source</nobr></th>""".trimIndent()
+        <table>
+          <tr $headerWrapperStyle>
+            <th><nobr>Context</nobr></th>
+            <th>&nbsp;</th>
+            <th><nobr>Value</nobr></th>
+            <th><nobr>Type</nobr></th>
+            <th><nobr>Source</nobr></th>""".trimIndent()
     )
-    if (showPixelCol) sb.append("<th $headerStyle><nobr>px&nbsp;Eq.</nobr></th>")
-    if (showHexCol) sb.append("<th $headerStyle><nobr>Hex</nobr></th>")
-    if (showWcagCol) sb.append("<th $headerStyle><nobr>WCAG</nobr></th>")
+    if (showPixelCol) sb.append("<th><nobr>px&nbsp;Eq.</nobr></th>")
+    if (showHexCol) sb.append("<th><nobr>Hex</nobr></th>")
+    if (showWcagCol) sb.append("<th><nobr>WCAG</nobr></th>")
     sb.append("</tr>")
 
     /* ── table rows ───────────────────────────────────────────────────────── */

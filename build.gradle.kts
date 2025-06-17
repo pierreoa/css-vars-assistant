@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.5.0"
+version = "1.5.1"
 
 repositories {
     mavenCentral()
@@ -154,36 +154,19 @@ intellijPlatform {
   <li><b>Works everywhere</b> – <code>CSS</code>, <code>SCSS</code>, <code>SASS</code>, <code>LESS</code>.</li>
 </ul>
 <p>
-  <b>New in 1.5.0:</b> IntelliJ 2024.1+ documentation API support, dynamic value-table columns, recursively/derived variable completions marked with (↗), improved DebugImportResolution helper, CSS cascade compliance with winner-first documentation, and centralized index versioning.
+  <b>🏅New in 1.5.1:</b> Updated documentation menu's table header styling.
+</p>
+<p>
+  <b>✨ New in 1.5.0:</b> IntelliJ 2024.1+ documentation API support, dynamic value-table columns, recursively/derived variable completions marked with (↗), improved DebugImportResolution helper, CSS cascade compliance with winner-first documentation, and centralized index versioning.
 </p>
 """.trimIndent()
 
         changeNotes = """
-<h2>1.5.0 – 2025-06-15</h2>
-
-<h3>Added</h3>
-<ul>
-  <li><b>IntelliJ 2024.1+ documentation API support</b> with rich popups and fallback for older builds.</li>
-  <li><b>Dynamic value-table columns</b> – documentation now auto-adds <i>px Eq.</i>, <i>Hex</i> and <i>WCAG</i> columns when relevant.</li>
-  <li><b>Recursively/derived variable completions</b> are now marked with (↗).</li>
-  <li><b>Improved DebugImportResolution helper</b> for tracing variable origins and import chains.</li>
-  <li><b>Legend for derived variables</b> – documentation now includes an explanation of the ↗ symbol when variables are resolved through imports or references.</li>
-</ul>
+<h2>1.5.1 – 2025-06-17</h2>
 
 <h3>Changed</h3>
 <ul>
-  <li><b>Completions and docs cascading logic</b> – now use the last value per context (cascading logic).</li>
-  <li><b>Improved context labeling</b> – media query parsing, color handling, and documentation rendering.</li>
-  <li><b>Centralized index versioning</b> – improved caching, and greater maintainability.</li>
-  <li><b>Winner-first documentation</b> – the actual winning value is now shown first in documentation tables for immediate clarity.</li>
-</ul>
-
-<h3>Fixed</h3>
-<ul>
-  <li><b>CSS cascade compliance</b> – local declarations now correctly override imported values, following proper CSS cascade rules.</li>
-  <li><b>Minor bugs in arithmetic resolution</b> for preprocessors.</li>
-  <li><b>Improved context collapsing</b> – color parsing, and documentation bugs.</li>
-  <li><b>Improved UX hierarchy</b> – better visual distinction between winning values (bold) and overridden declarations.</li>
+  <li><b>Documentation menu styling</b> Removed border bottom from each table header and re-adds it to the wrapping table-header, to avoid annoying spaces between table headers.</li>
 </ul>
 """.trimIndent()
     }
