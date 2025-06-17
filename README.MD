@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.5.0<br/>
+**Version:** 1.5.1<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate 2024.1+ (and 2025.1+)  
 **Author:** Stian Larsen  
 **Repo:** [github.com/Stianlars1/css-vars-assistant](https://github.com/Stianlars1/css-vars-assistant)
@@ -15,7 +15,7 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
 
 ---
 
-## ✨ What's new in 1.5.0
+## ✨ What's new in 1.5.1
 
 | Category                    | Highlights                                                                                      |
 |-----------------------------|-------------------------------------------------------------------------------------------------|
