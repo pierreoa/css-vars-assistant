@@ -5,6 +5,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
 import cssvarsassistant.model.CssVarDoc
 import cssvarsassistant.settings.CssVarsAssistantSettings
+import cssvarsassistant.util.ARROW_UP_RIGHT
 import cssvarsassistant.util.ValueUtil
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -133,8 +134,10 @@ fun buildHtmlDocument(
 
             // Add resolution indicator
             if (resInfo.steps.isNotEmpty()) {
-                val href = "cssvar-resolve://${varName}/${displayIndex}"
-                sb.append("""&nbsp;<a href="$href" tabindex="0" style="$rowResolvedStyle">↗</a>""")
+                val encodedSteps = resInfo.steps.joinToString("|") {
+                    StringUtil.escapeXmlEntities(it)
+                }
+                sb.append("""&nbsp;<a href="css-var-resolution://$encodedSteps" style="color: #4A9EFF; text-decoration: none; font-size: 9px;">$ARROW_UP_RIGHT</a>""")
             }
             sb.append("</nobr></td>")
         }
