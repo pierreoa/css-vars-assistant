@@ -8,7 +8,6 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVariableCompletion
-import cssvarsassistant.documentation.tooltip.CssVariableDocumentationHyperlinkListener
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
@@ -16,7 +15,6 @@ import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.RankUtil.rank
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
-import javax.swing.event.HyperlinkListener
 import kotlin.math.roundToInt
 
 val ENTRY_SEP = "|||"
@@ -90,7 +88,7 @@ object CssVariableDocumentationService {
             // Convert back to original format
             val sortedTriples = sorted.map { Triple(it.context, it.resInfo, it.comment) }
 
-            return buildHtmlDocumentWithHyperlinks(varName, doc, sortedTriples, showPixelCol, winnerIndex, element)
+            return buildHtmlDocument(varName, doc, sortedTriples, showPixelCol, winnerIndex)
 
 
         } catch (e: ProcessCanceledException) {
@@ -101,10 +99,6 @@ object CssVariableDocumentationService {
         }
     }
 
-    // Add method to get hyperlink listener for the documentation
-    fun createHyperlinkListener(element: PsiElement, varName: String): HyperlinkListener {
-        return CssVariableDocumentationHyperlinkListener(element.project, varName)
-    }
 
     private data class EntryWithSource(
         val context: String,

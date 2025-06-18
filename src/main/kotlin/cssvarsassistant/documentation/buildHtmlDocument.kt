@@ -3,32 +3,12 @@ package cssvarsassistant.documentation
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
-import com.intellij.psi.PsiElement
-import cssvarsassistant.documentation.tooltip.CssVariableDocumentationComponentProvider
 import cssvarsassistant.model.CssVarDoc
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.ValueUtil
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
-// Enhanced version that supports hyperlink installation
-fun buildHtmlDocumentWithHyperlinks(
-    varName: String,
-    doc: CssVarDoc,
-    sorted: List<Triple<String, ResolutionInfo, String>>,
-    showPixelCol: Boolean,
-    winnerIndex: Int = -1,
-    element: PsiElement
-): String {
-    val html = buildHtmlDocument(varName, doc, sorted, showPixelCol, winnerIndex)
-
-    // Register a callback to install hyperlink listener when component is created
-    // This is done by storing the element and varName for later retrieval
-    CssVariableDocumentationComponentProvider.registerHyperlinkData(element, varName)
-
-
-    return html
-}
 
 fun buildHtmlDocument(
     varName: String,
