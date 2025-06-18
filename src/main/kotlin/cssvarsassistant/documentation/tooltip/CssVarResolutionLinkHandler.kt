@@ -4,9 +4,9 @@ package cssvarsassistant.documentation.tooltip
 import com.intellij.platform.backend.documentation.DocumentationLinkHandler
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.documentation.LinkResolveResult
+import cssvarsassistant.util.CSS_VAR_RESOLUTION_LINK
 
 class CssVarResolutionLinkHandler : DocumentationLinkHandler {
-
     override fun resolveLink(target: DocumentationTarget, url: String): LinkResolveResult? {
         if (!url.startsWith(CSS_VAR_RESOLUTION_LINK)) return null
 
@@ -16,9 +16,7 @@ class CssVarResolutionLinkHandler : DocumentationLinkHandler {
 
         if (steps.isEmpty()) return null
 
-        return LinkResolveResult.resolvedTarget(
-            CustomResolutionTarget(steps)
-        )
+        return LinkResolveResult.resolvedTarget(CustomResolutionTarget(steps))
     }
 }
 

@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream
 plugins {
     id("org.jetbrains.intellij.platform") version "2.6.0"
     kotlin("jvm") version "2.1.20"
+
 }
 
 group = "com.stianlarsen"
@@ -25,6 +26,7 @@ dependencies {
         // Add verification tools (instrumentationTools() is deprecated and removed)
         pluginVerifier()
         zipSigner()
+
     }
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit5"))

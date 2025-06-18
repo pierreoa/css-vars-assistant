@@ -1,9 +1,9 @@
 package cssvarsassistant.documentation
 
 import com.intellij.lang.documentation.DocumentationMarkup
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
-import cssvarsassistant.documentation.tooltip.CSS_VAR_RESOLUTION_LINK
 import cssvarsassistant.model.CssVarDoc
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.ARROW_UP_RIGHT
@@ -21,7 +21,7 @@ fun buildHtmlDocument(
 ): String {
     val settings = CssVarsAssistantSettings.getInstance()
     val columnVisibility = settings.columnVisibility
-
+    val logger = logger<CssVariableDocumentationService>()
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
     val hasColorValues = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
@@ -135,10 +135,22 @@ fun buildHtmlDocument(
 
             // Add resolution indicator
             if (resInfo.steps.isNotEmpty()) {
-                val encodedSteps = resInfo.steps.joinToString("|") {
+                val encodedSteps = resInfo.steps.joinToString(",") {
                     StringUtil.escapeXmlEntities(it)
                 }
-                sb.append("""&nbsp;<a href="$CSS_VAR_RESOLUTION_LINK$encodedSteps" style="color: #4A9EFF; text-decoration: none; font-size: 9px;">$ARROW_UP_RIGHT</a>""")
+                sb.append(
+                    """&nbsp;<a href="#" onclick="window.showResolutionChain('${encodedSteps.replace("'", "\\'")}'); return false;" style="color: #4A9EFF; text-decoration: none; font-size: 9px;">$ARROW_UP_RIGHT</a>"""
+                )
+
+// Add at start of HTML:
+                sb.append(
+                    """<script>
+window.showResolutionChain = function(steps) {
+  // This will be handled by IntelliJ's JavaScript bridge
+  console.log('Resolution:', steps);
+};
+</script>"""
+                )
             }
             sb.append("</nobr></td>")
         }
