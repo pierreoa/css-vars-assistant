@@ -3,6 +3,7 @@ package cssvarsassistant.documentation
 import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
+import cssvarsassistant.documentation.tooltip.CSS_VAR_RESOLUTION_LINK
 import cssvarsassistant.model.CssVarDoc
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.ARROW_UP_RIGHT
@@ -137,7 +138,7 @@ fun buildHtmlDocument(
                 val encodedSteps = resInfo.steps.joinToString("|") {
                     StringUtil.escapeXmlEntities(it)
                 }
-                sb.append("""&nbsp;<a href="css-var-resolution://$encodedSteps" style="color: #4A9EFF; text-decoration: none; font-size: 9px;">$ARROW_UP_RIGHT</a>""")
+                sb.append("""&nbsp;<a href="$CSS_VAR_RESOLUTION_LINK$encodedSteps" style="color: #4A9EFF; text-decoration: none; font-size: 9px;">$ARROW_UP_RIGHT</a>""")
             }
             sb.append("</nobr></td>")
         }

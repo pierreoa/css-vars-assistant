@@ -1,9 +1,6 @@
-/*
 // src/main/kotlin/cssvarsassistant/documentation/tooltip/EnhancedResolutionHandler.kt
 package cssvarsassistant.documentation.tooltip
 
-import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.platform.backend.documentation.DocumentationLinkHandler
 import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.documentation.LinkResolveResult
@@ -16,45 +13,32 @@ import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.border.EmptyBorder
 
+const val CSS_VAR_RESOLUTION_LINK = "css-var-resolution://"
+
 class EnhancedResolutionHandler : DocumentationLinkHandler {
 
     override fun resolveLink(
         target: DocumentationTarget,
         url: String,
-        project: Project
     ): LinkResolveResult? {
-        if (!url.startsWith("css-var-resolution://")) return null
 
-        val steps = url.removePrefix("css-var-resolution://")
+        if (!url.startsWith(CSS_VAR_RESOLUTION_LINK)) return null
+
+        val steps = url.removePrefix(CSS_VAR_RESOLUTION_LINK)
             .split("|")
             .filter { it.isNotBlank() }
 
         if (steps.isEmpty()) return null
 
-        // Create rich popup with better visual design
-        val content = createResolutionStepsComponent(steps)
-
-        val popup = JBPopupFactory.getInstance()
-            .createComponentPopupBuilder(content, null)
-            .setTitle("Variable Resolution Chain")
-            .setResizable(false)
-            .setMovable(true)
-            .setRequestFocus(true)
-            .setFocusable(true)
-            .createPopup()
-
-        // Find the current editor to position popup
-        val editor = com.intellij.openapi.fileEditor.FileEditorManager
-            .getInstance(project)
-            .selectedTextEditor
-
-        if (editor != null) {
-            popup.showInBestPositionFor(editor)
-        } else {
-            popup.showCenteredInCurrentWindow(project)
-        }
-
-        return LinkResolveResult.resolvedTarget(target) // Mark as handled
+        /* ------------------------------------------------------------------
+         * 2024.1+ `resolveLink` can no longer pop UI directly (no Project).
+         * If you still want the fancy popup you had earlier you can:
+         *   1) fetch the project lazily from the target or
+         *   2) use LinkResolveResult.resolvedTarget like here, and let
+         *      the platform render the HTML we return.
+         * For now we take the simple route – hand back a rich target.
+         * ------------------------------------------------------------------ */
+        return LinkResolveResult.resolvedTarget(CustomResolutionTarget(steps))
     }
 
     private fun createResolutionStepsComponent(steps: List<String>): JComponent {
@@ -93,4 +77,4 @@ class EnhancedResolutionHandler : DocumentationLinkHandler {
 
         return panel
     }
-}*/
+}

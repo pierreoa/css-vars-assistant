@@ -27,11 +27,7 @@ class CssVariableDocumentationTarget(
         val html = CssVariableDocumentationService.generateDocumentation(element, varName)
             ?: return null
 
-        // Create custom hyperlink listener for this documentation
-        val linkListener = CssVarPopupLinkListener(element.project, varName)
-
         return DocumentationResult.documentation(html)
-            .hyperlinks(linkListener)
     }
 
     override fun computeDocumentationHint(): String? {

@@ -8,9 +8,9 @@ import com.intellij.platform.backend.documentation.LinkResolveResult
 class CssVarResolutionLinkHandler : DocumentationLinkHandler {
 
     override fun resolveLink(target: DocumentationTarget, url: String): LinkResolveResult? {
-        if (!url.startsWith("css-var-resolution://")) return null
+        if (!url.startsWith(CSS_VAR_RESOLUTION_LINK)) return null
 
-        val steps = url.removePrefix("css-var-resolution://")
+        val steps = url.removePrefix(CSS_VAR_RESOLUTION_LINK)
             .split("|")
             .filter { it.isNotBlank() }
 
@@ -22,7 +22,7 @@ class CssVarResolutionLinkHandler : DocumentationLinkHandler {
     }
 }
 
-private class CustomResolutionTarget(
+class CustomResolutionTarget(
     private val resolutionSteps: List<String>
 ) : DocumentationTarget {
 

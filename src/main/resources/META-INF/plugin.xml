@@ -50,10 +50,6 @@
                 displayName="CSS Variables Assistant"
                 parentId="tools"/>
 
-        <postStartupActivity
-                implementation="cssvarsassistant.documentation.tooltip.DocumentationComponentStartupActivity"/>
-        <applicationService
-                serviceImplementation="cssvarsassistant.documentation.tooltip.CssVariableDocumentationRegistry"/>
 
         <documentationLinkHandler
                 implementation="cssvarsassistant.documentation.tooltip.CssVarResolutionLinkHandler"/>
