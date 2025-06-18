@@ -43,12 +43,17 @@
         <!-- New API (2023.1+) -->
         <platform.backend.documentation.psiTargetProvider
                 implementation="cssvarsassistant.documentation.v2.CssVariablePsiDocumentationTargetProvider"/>
+
         <applicationConfigurable
                 id="cssvarsassistant.settings"
                 instance="cssvarsassistant.settings.CssVarsAssistantConfigurable"
                 displayName="CSS Variables Assistant"
-                parentId="tools"
-        />
+                parentId="tools"/>
+
+        <postStartupActivity implementation="cssvarsassistant.documentation.tooltip.DocumentationComponentStartupActivity"/>
+        <applicationService serviceImplementation="cssvarsassistant.documentation.tooltip.CssVariableDocumentationRegistry"/>
+        <documentationLinkHandler implementation="cssvarsassistant.documentation.tooltip.CssVarResolutionLinkHandler"/>
+
 
     </extensions>
 

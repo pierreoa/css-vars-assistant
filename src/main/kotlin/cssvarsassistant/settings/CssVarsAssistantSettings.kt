@@ -22,12 +22,25 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         ASC, DESC
     }
 
+    data class ColumnVisibility(
+        var showContext: Boolean = true,
+        var showColorSwatch: Boolean = true,
+        var showValue: Boolean = true,
+        var showType: Boolean = true,
+        var showSource: Boolean = true,
+        var showPixelEquivalent: Boolean = true,
+        var showHexValue: Boolean = true,
+        var showWcagContrast: Boolean = true
+    )
+
     data class State(
         var showContextValues: Boolean = true,
         var allowIdeCompletions: Boolean = true,
         var indexingScope: IndexingScope = IndexingScope.PROJECT_WITH_IMPORTS,
         var maxImportDepth: Int = 20,
-        var sortingOrder: SortingOrder = SortingOrder.ASC
+        var sortingOrder: SortingOrder = SortingOrder.ASC,
+        var columnVisibility: ColumnVisibility = ColumnVisibility()
+
     )
 
     private var state = State()
@@ -67,6 +80,12 @@ class CssVarsAssistantSettings : PersistentStateComponent<CssVarsAssistantSettin
         get() = state.sortingOrder
         set(value) {
             state.sortingOrder = value
+        }
+
+    var columnVisibility: ColumnVisibility
+        get() = state.columnVisibility
+        set(value) {
+            state.columnVisibility = value
         }
 
     // Computed properties for backward compatibility and clarity

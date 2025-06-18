@@ -1,5 +1,5 @@
 // CssVariableDocumentationService.kt
-package cssvarsassistant.documentation.v2
+package cssvarsassistant.documentation
 
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProcessCanceledException
@@ -8,10 +8,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVariableCompletion
-import cssvarsassistant.documentation.ResolutionInfo
-import cssvarsassistant.documentation.buildHtmlDocument
-import cssvarsassistant.documentation.lastLocalValueInFile
-import cssvarsassistant.documentation.resolveVarValue
+import cssvarsassistant.documentation.tooltip.CssVariableDocumentationHyperlinkListener
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
@@ -19,6 +16,7 @@ import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.RankUtil.rank
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
+import javax.swing.event.HyperlinkListener
 import kotlin.math.roundToInt
 
 val ENTRY_SEP = "|||"
@@ -92,7 +90,8 @@ object CssVariableDocumentationService {
             // Convert back to original format
             val sortedTriples = sorted.map { Triple(it.context, it.resInfo, it.comment) }
 
-            return buildHtmlDocument(varName, doc, sortedTriples, showPixelCol, winnerIndex)
+            return buildHtmlDocumentWithHyperlinks(varName, doc, sortedTriples, showPixelCol, winnerIndex, element)
+
 
         } catch (e: ProcessCanceledException) {
             throw e
@@ -100,6 +99,11 @@ object CssVariableDocumentationService {
             logger.error("Error generating documentation", e)
             return null
         }
+    }
+
+    // Add method to get hyperlink listener for the documentation
+    fun createHyperlinkListener(element: PsiElement, varName: String): HyperlinkListener {
+        return CssVariableDocumentationHyperlinkListener(element.project, varName)
     }
 
     private data class EntryWithSource(
@@ -155,19 +159,30 @@ object CssVariableDocumentationService {
             val activeText = element.containingFile.text
             val localWinner = lastLocalValueInFile(activeText, varName)
 
-            val resolved = if (localWinner != null) {
-                localWinner  // Local declaration wins
+            val resolutionInfo = if (localWinner != null) {
+                // Local declaration - resolve it to get steps
+                resolveVarValue(project, localWinner)
             } else {
                 // Fallback to indexed values
                 rawEntries.mapNotNull {
                     val parts = it.split(DELIMITER, limit = 3)
                     if (parts.size >= 2) parts[0] to parts[1] else null
                 }.let { list ->
-                    list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
+                    val rawValue = list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
+                    rawValue?.let { resolveVarValue(project, it) }
                 }
             }
 
-            resolved?.let { "$varName → $it" }
+            // Return resolution steps if they exist, otherwise just the final value
+            resolutionInfo?.let { info ->
+                val result = if (info.steps.isNotEmpty() && info.original != info.resolved) {
+                    "Resolution: ${info.steps.joinToString(" → ")} → ${info.resolved}"
+                } else {
+                    "$varName → ${info.resolved}"
+                }
+                logger.info("generateHint returning: $result") // Add this line
+                result
+            }
         } catch (e: Exception) {
             logger.warn("Failed to generate hint for $varName", e)
             null

@@ -7,6 +7,9 @@ import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
+import cssvarsassistant.documentation.CssVariableDocumentationService
+import cssvarsassistant.documentation.tooltip.CssVariableDocumentationHyperlinkListener
+import cssvarsassistant.documentation.tooltip.CssVariableDocumentationRegistry
 
 /**
  * Documentation Target for CSS Variables using the new Documentation Target API (2023.1+).
@@ -23,7 +26,6 @@ class CssVariableDocumentationTarget(
 ) : DocumentationTarget {
     private val LOG = Logger.getInstance(CssVariableDocumentationTarget::class.java)
 
-
     override fun computePresentation(): TargetPresentation =
         TargetPresentation.builder(varName)
             .icon(com.intellij.icons.AllIcons.FileTypes.Css)
@@ -32,11 +34,27 @@ class CssVariableDocumentationTarget(
     override fun computeDocumentation(): DocumentationResult? {
         LOG.debug("V2 API called for $varName")
         val html = CssVariableDocumentationService.generateDocumentation(element, varName)
-        return html?.let { DocumentationResult.documentation(it) }
+
+        return html?.let { htmlContent ->
+            // Create the documentation result with hyperlink support
+            val result = DocumentationResult.documentation(htmlContent)
+
+            // Store the hyperlink listener data for this documentation
+            CssVariableDocumentationRegistry.registerHyperlinkListener(
+                varName,
+                CssVariableDocumentationHyperlinkListener(element.project, varName)
+            )
+
+            result
+        }
     }
 
-    override fun computeDocumentationHint(): String? =
-        CssVariableDocumentationService.generateHint(element, varName)
+    override fun computeDocumentationHint(): String? {
+        LOG.info("computeDocumentationHint() called for $varName")
+        val result = CssVariableDocumentationService.generateHint(element, varName)
+        LOG.info("generateHint() returned: $result")
+        return result
+    }
 
     override fun createPointer(): Pointer<out DocumentationTarget> {
         val elementPointer = SmartPointerManager.getInstance(element.project)
