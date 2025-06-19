@@ -200,7 +200,7 @@ fun buildHtmlDocument(
     }
 
 
-/* ── tiny util helpers ─────────────────────────────────────────────────────── */
+    /* ── tiny util helpers ─────────────────────────────────────────────────────── */
 fun java.awt.Color.toHex(): String =
     "#%02x%02x%02x".format(red, green, blue)
 
