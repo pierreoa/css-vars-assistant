@@ -15,12 +15,12 @@ import com.intellij.util.ProcessingContext
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
+import cssvarsassistant.documentation.findPreprocessorVariableValue
 import cssvarsassistant.documentation.lastLocalValueInFile
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
-import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
 import java.awt.Component
@@ -249,13 +249,25 @@ class CssVariableCompletion : CompletionContributor() {
             }
 
             /* @less / $scss ----------------------------------------------- */
+            /*            Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())?.let { m ->
+                            val varName = m.groupValues[1]
+                            CssVarCompletionCache.get(project, varName)?.let { return it }
+
+                            val resolved = findPreprocessorVariableValue(project, varName)
+                            if (resolved != null) CssVarCompletionCache.put(project, varName, resolved)
+                            return resolved ?: raw
+                        }*/
+
             Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())?.let { m ->
                 val varName = m.groupValues[1]
                 CssVarCompletionCache.get(project, varName)?.let { return it }
 
-                val resolved = findPreprocessorVariableValue(project, varName)
-                if (resolved != null) CssVarCompletionCache.put(project, varName, resolved)
-                return resolved ?: raw
+                val resolved = findPreprocessorVariableValue(project, varName)?.resolved
+                if (resolved != null && resolved != raw) {
+                    CssVarCompletionCache.put(project, varName, resolved)
+                    return resolved
+                }
+                return raw
             }
 
             return raw
@@ -397,18 +409,6 @@ class CssVariableCompletion : CompletionContributor() {
         }
     }
 
-
-    private fun findPreprocessorVariableValue(project: Project, varName: String): String? {
-        return try {
-            val freshScope = ScopeUtil.currentPreprocessorScope(project)
-            PreprocessorUtil.resolveVariable(project, varName, freshScope)
-        } catch (e: ProcessCanceledException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn("Failed to find preprocessor variable: $varName", e)
-            null
-        }
-    }
 }
 
 class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {

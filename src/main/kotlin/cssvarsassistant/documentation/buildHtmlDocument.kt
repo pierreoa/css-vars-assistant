@@ -115,18 +115,24 @@ fun buildHtmlDocument(
             sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
         }
 
+        if (resInfo.steps.isNotEmpty()) {
+            logger.info("Variable: $varName")
+            logger.info("Original: ${resInfo.original}")
+            logger.info("Resolved: ${resInfo.resolved}")
+            logger.info("Steps: ${resInfo.steps}")
+            logger.info("Steps joined: ${resInfo.steps.joinToString(" → ")}")
+        }
+
         // Add resolution indicator
         if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
             val SPACE = "&nbsp;"
-            val resolvedSteps = resInfo.steps.joinToString("$SPACE→$SPACE")
-            println("\n\nSteps:\n$resInfo")
-            println("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
-            logger.debug("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
-            logger.info("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
+
+            // Create a readable tooltip with proper formatting
+            val tooltipText = buildTooltipText(resInfo, rawValue)
 
             sb.append(
-                """$SPACE<div title="${StringUtil.escapeXmlEntities(resolvedSteps)}" 
-                            $rowResolvedStyle>$SPACE$ARROW_UP_RIGHT$SPACE</div>"""
+                """$SPACE<div title="${StringUtil.escapeXmlEntities(tooltipText)}" 
+                    $rowResolvedStyle>$SPACE$ARROW_UP_RIGHT$SPACE</div>"""
             )
         }
         sb.append("</nobr></td>")
@@ -225,3 +231,37 @@ fun contextLabel(ctx: String, isColor: Boolean): String {
 
 fun colorSwatchHtml(css: String): String =
     ColorParser.parseCssColor(css)?.let { "<font color='${it.toHex()}'>&#9632;</font>" } ?: "&nbsp;"
+
+
+/**
+ * Creates a readable tooltip showing the complete resolution chain
+ */
+private fun buildTooltipText(resInfo: ResolutionInfo, finalValue: String): String {
+    val steps = resInfo.steps
+
+
+    if (steps.isEmpty()) return "Resolved through variable references"
+
+
+    return buildString {
+        append("Resolution chain:\n")
+
+        // Show each step with its context
+        steps.forEachIndexed { index, step ->
+            append("${index + 1}. $step")
+            if (index < steps.size - 1) {
+                append("\n   ↓\n")
+            }
+        }
+
+        // Show final result
+        append("\n\nFinal value: $finalValue")
+
+        // Add helpful context
+        when {
+            steps.any { it.contains("@") } -> append("\n\n(@ = LESS/SCSS variable)")
+            steps.any { it.contains("var(") } -> append("\n\n(var() = CSS custom property)")
+            steps.any { it.contains("=") } -> append("\n\n(= = computed arithmetic)")
+        }
+    }
+}

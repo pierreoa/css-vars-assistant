@@ -162,3 +162,5 @@ fun lastLocalValueInFile(fileText: String, varName: String): String? =
         .findAll(fileText)
         .map { it.groupValues[1].trim() }
         .lastOrNull()
+
+
