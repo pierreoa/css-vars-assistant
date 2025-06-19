@@ -20,8 +20,7 @@ data class ResolutionInfo(val original: String, val resolved: String, val steps:
 
 private val LOG = Logger.getInstance("cssvarsassistant.docHelpers")
 
-/* ────────────────────── resolver (uendret) ─────────────────────────────── */
-
+/* ────────────────────── resolver ─────────────────────────────── */
 fun resolveVarValue(
     project: Project,
     raw: String,
@@ -29,6 +28,7 @@ fun resolveVarValue(
     depth: Int = 0,
     steps: List<String> = emptyList()
 ): ResolutionInfo {
+    println("\n== resolveVarValue ==")
     val settings = CssVarsAssistantSettings.getInstance()
     if (depth > settings.maxImportDepth) return ResolutionInfo(raw, raw, steps)
 
@@ -38,6 +38,7 @@ fun resolveVarValue(
         Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)?.let { m ->
             val ref = m.groupValues[1]
             if (ref !in visited) {
+                println("\ninside if")
                 val newSteps = steps + "var($ref)"
                 val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
                 val entries = FileBasedIndex.getInstance()
@@ -51,27 +52,47 @@ fun resolveVarValue(
                 }.let { list ->
                     list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
                 }
+                println("\ndefVal: \n$defVal")
+                println("\nvisited: \n$visited")
+                println("\nsteps: \n$steps")
+                println("\nnewSteps: \n$newSteps")
+                println("\nref: \n$ref")
+                println("\nentries: \n$entries")
 
                 if (defVal != null)
                     return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
             }
+            println("\ninside else")
             return ResolutionInfo(raw, raw, steps)
         }
 
         val preprocessorMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
+        println("\npreprocessorMatch: \n$preprocessorMatch")
         if (preprocessorMatch != null) {
             val varName = preprocessorMatch.groupValues[1]
             val prefix = if (raw.contains("@")) "@" else "$"
             val currentScope = ScopeUtil.currentPreprocessorScope(project)
 
+            // **KEEP**: Check cache first (important for performance!)
             CssVarCompletionCache.get(project, varName, currentScope)?.let {
-                return ResolutionInfo(raw, it, steps + "$prefix$varName")
+                val cachedValue = ResolutionInfo(raw, it, steps + "$prefix$varName")
+                println("\nCache hit for variable: $varName")
+                println("Cached Value:  $cachedValue")
+                return cachedValue
             }
 
-            val resolved = findPreprocessorVariableValue(project, varName)
-            if (resolved != null && resolved != raw) {
-                CssVarCompletionCache.put(project, varName, currentScope, resolved)
-                return ResolutionInfo(raw, resolved, steps + "$prefix$varName")
+            // **FIXED**: Get resolution info with steps from preprocessor
+            val resolution = findPreprocessorVariableValue(project, varName, steps)
+            println("\nresolution: \n$resolution")
+            if (resolution != null && resolution.resolved != raw) {
+                println("\nCache miss for variable: $varName")
+                // **KEEP**: Store in cache for future lookups
+                CssVarCompletionCache.put(project, varName, currentScope, resolution.resolved)
+                return ResolutionInfo(
+                    original = raw,
+                    resolved = resolution.resolved,
+                    steps = resolution.steps  // **This now contains the full chain!**
+                )
             }
         }
 
@@ -84,18 +105,34 @@ fun resolveVarValue(
     }
 }
 
-private fun findPreprocessorVariableValue(project: Project, varName: String): String? =
-    try {
+
+/* ────────────────────── Recursive Preprocessor finder ──────────────────────── */
+fun findPreprocessorVariableValue(
+    project: Project,
+    varName: String,
+    currentSteps: List<String> = emptyList()
+): ResolutionInfo? {
+    return try {
+        println("\nfindPreprocessorVariableValue: $varName")
         val freshScope = ScopeUtil.currentPreprocessorScope(project)
-        PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        val resolution = PreprocessorUtil.resolveVariableWithSteps(
+            project,
+            varName,
+            freshScope,
+            emptySet(),
+            currentSteps
+        )
+        println("\nResolution result: $resolution")
+        return resolution
     } catch (e: ProcessCanceledException) {
         throw e
     } catch (e: Exception) {
         LOG.warn("Failed to resolve @$varName", e)
         null
     }
+}
 
-/* ────────────────────── **ny, robust** ekstraktor ──────────────────────── */
+/* ────────────────────── ** extractor ──────────────────────── */
 
 fun extractCssVariableName(element: PsiElement): String? {
     // Always check element validity first
@@ -119,8 +156,7 @@ fun extractCssVariableName(element: PsiElement): String? {
     return null
 }
 
-/* ─────────────────────── other helpers (uendret) ───────────────────────── */
-
+/* ─────────────────────── other helpers ───────────────────────── */
 fun lastLocalValueInFile(fileText: String, varName: String): String? =
     Regex("""\Q$varName\E\s*:\s*([^;]+);""")
         .findAll(fileText)

@@ -6,6 +6,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.indexing.FileBasedIndex
+import cssvarsassistant.documentation.ResolutionInfo
 import cssvarsassistant.index.PREPROCESSOR_VARIABLE_INDEX_NAME
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.*
@@ -13,11 +14,7 @@ import kotlin.math.*
 /**
  * Resolves LESS / SCSS variables and simple arithmetic expressions.
  *
- * Supported patterns:
- *   (@base * 0.5) (@base / 3) (@base + 2) (@base - 1)
- *   (@base ** 2)  (@base % 4)
- *   (@base min 4) (@base max 10)
- *   (@base floor) (@base ceil) (@base round)
+ * Supports both simple resolution (for completion) and step tracking (for documentation).
  */
 object PreprocessorUtil {
 
@@ -29,62 +26,101 @@ object PreprocessorUtil {
      */
     private val cache = ConcurrentHashMap<Triple<Int, String, Int>, String?>()
 
+    /**
+     * Simple resolution for completion - returns just the final resolved value.
+     */
     fun resolveVariable(
         project: Project,
         varName: String,
         scope: GlobalSearchScope,
         visited: Set<String> = emptySet()
     ): String? {
-        ProgressManager.checkCanceled()
-        if (varName in visited) return null
+        return resolveVariableWithSteps(project, varName, scope, visited).resolved
+    }
 
-        // FIX: Use project.hashCode() instead of project object
+    /**
+     * Full resolution with step tracking for documentation.
+     */
+    fun resolveVariableWithSteps(
+        project: Project,
+        varName: String,
+        scope: GlobalSearchScope,
+        visited: Set<String> = emptySet(),
+        steps: List<String> = emptyList()
+    ): ResolutionInfo {
+        ProgressManager.checkCanceled()
+        if (varName in visited) return ResolutionInfo(varName, varName, steps)
+
+        // Use project.hashCode() instead of project object for cache key
         val key = Triple(project.hashCode(), varName, scope.hashCode())
-        cache[key]?.let { return it }
+        cache[key]?.let { cachedValue ->
+            return ResolutionInfo(
+                original = "@$varName",
+                resolved = cachedValue,
+                steps = steps + "@$varName"
+            )
+        }
 
         return try {
             val values = FileBasedIndex.getInstance()
                 .getValues(PREPROCESSOR_VARIABLE_INDEX_NAME, varName, scope)
 
-            if (values.isEmpty()) return null
+            if (values.isEmpty()) return ResolutionInfo(varName, varName, steps)
 
             for (raw in values) {
                 ProgressManager.checkCanceled()
 
-                /* ---------- arithmetic ----------------------------------- */
+                /* ---------- arithmetic expressions ----------------------------- */
                 parseArithmetic(raw)?.let { (baseVar, op, rhsMaybe) ->
-                    val baseVal = resolveVariable(project, baseVar, scope, visited + varName)
-                    if (baseVal != null) {
-                        compute(baseVal, op, rhsMaybe)?.let { computed ->
-                            cache[key] = computed
-                            return computed
-                        }
+                    val baseResolution = resolveVariableWithSteps(
+                        project, baseVar, scope, visited + varName, steps + "@$varName"
+                    )
+                    val baseVal = baseResolution.resolved
+
+                    compute(baseVal, op, rhsMaybe)?.let { computed ->
+                        val result = ResolutionInfo(
+                            original = "@$varName",
+                            resolved = computed,
+                            steps = baseResolution.steps + "($baseVal $op ${rhsMaybe ?: ""}) = $computed"
+                        )
+                        cache[key] = computed // Cache just the final value
+                        return result
                     }
                 }
 
-                /* ---------- reference to another variable ---------------- */
+                /* ---------- reference to another variable ------------------- */
                 Regex("""^[\s]*[@$]([\w-]+)""").find(raw)?.let { m ->
-                    val resolved = resolveVariable(
-                        project, m.groupValues[1], scope, visited + varName
-                    ) ?: raw
-                    cache[key] = resolved
-                    return resolved
+                    val refVar = m.groupValues[1]
+                    val resolution = resolveVariableWithSteps(
+                        project, refVar, scope, visited + varName, steps + "@$varName"
+                    )
+                    val result = ResolutionInfo(
+                        original = "@$varName",
+                        resolved = resolution.resolved,
+                        steps = resolution.steps
+                    )
+                    cache[key] = resolution.resolved // Cache just the final value
+                    return result
                 }
 
-                /* ---------- literal -------------------------------------- */
-                cache[key] = raw
-                return raw
+                /* ---------- literal value ----------------------------------- */
+                val result = ResolutionInfo(
+                    original = "@$varName",
+                    resolved = raw,
+                    steps = steps + "@$varName"
+                )
+                cache[key] = raw // Cache just the final value
+                return result
             }
 
-            null
+            ResolutionInfo(varName, varName, steps)
         } catch (e: ProcessCanceledException) {
             throw e
         } catch (e: Exception) {
             LOG.warn("Error resolving @$varName", e)
-            null
+            ResolutionInfo(varName, varName, steps)
         }
     }
-
 
     /* --------------------------------------------------------------------- */
     /*  Helpers                                                              */
@@ -140,7 +176,7 @@ object PreprocessorUtil {
     /** Keeps integers pretty, decimals ≤ 3 dp. */
     private fun format(n: Double, unit: String): String =
         if (n % 1 == 0.0) "${n.roundToInt()}$unit"
-        else "${"%.3f".format(n).trimEnd('0').trimEnd('.')} $unit".replace(" ", "")
+        else "${"%.3f".format(n).trimEnd('0').trimEnd('.')}$unit"
 
     fun clearCache() = cache.clear()
 }

@@ -1,9 +1,12 @@
 package cssvarsassistant.documentation
 
 import com.intellij.lang.documentation.DocumentationMarkup
+import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
+import cssvarsassistant.documentation.v2.CssVariableDocumentationService
 import cssvarsassistant.model.CssVarDoc
+import cssvarsassistant.util.ARROW_UP_RIGHT
 import cssvarsassistant.util.ValueUtil
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -15,6 +18,7 @@ fun buildHtmlDocument(
     showPixelCol: Boolean,
     winnerIndex: Int = -1  // Default for backward compatibility
 ): String {
+    val logger = logger<CssVariableDocumentationService>()
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
     val showWcagCol = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
@@ -34,7 +38,7 @@ fun buildHtmlDocument(
     val headerWrapperStyle =
         "style='color:#F2F2F2;padding:2px 4px;font-weight:bold;border-bottom:1px solid #BABABA;'"
     val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;'"
-    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:9px!important;'"
+    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:10px;'"
 
     /* ── builder start ─────────────────────────────────────────────────────── */
     val sb = StringBuilder()
@@ -54,7 +58,7 @@ fun buildHtmlDocument(
     }
 
     if (hasResolvedValues) {
-        sb.append("<p><small><b>Legend:</b> ↗ indicates a value resolved through variable references or imports</small></p>")
+        sb.append("<p><small><b>Legend:</b> $ARROW_UP_RIGHT indicates a value resolved through variable references or imports</small></p>")
     }
 
     /* ── table header ─────────────────────────────────────────────────────── */
@@ -112,11 +116,19 @@ fun buildHtmlDocument(
         }
 
         // Add resolution indicator
-        if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved)
+        if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+            val SPACE = "&nbsp;"
+            val resolvedSteps = resInfo.steps.joinToString("$SPACE→$SPACE")
+            println("\n\nSteps:\n$resInfo")
+            println("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
+            logger.debug("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
+            logger.info("\n\nResolved steps:\nVariable name: $varName\nResolved steps: $resolvedSteps")
+
             sb.append(
-                """&nbsp;<small title="${StringUtil.escapeXmlEntities(resInfo.steps.joinToString(" → "))}" 
-                            $rowResolvedStyle>↗</small>"""
+                """$SPACE<div title="${StringUtil.escapeXmlEntities(resolvedSteps)}" 
+                            $rowResolvedStyle>$SPACE$ARROW_UP_RIGHT$SPACE</div>"""
             )
+        }
         sb.append("</nobr></td>")
             .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
             .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
