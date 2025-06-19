@@ -49,6 +49,17 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
             settings.allowIdeCompletions
         )
 
+    // Column visibility checkboxes
+    private val showContextColumnCheck = JCheckBox("Context", settings.columnVisibility.showContext)
+    private val showColorSwatchCheck = JCheckBox("Color Swatch", settings.columnVisibility.showColorSwatch)
+    private val showValueColumnCheck = JCheckBox("Value", settings.columnVisibility.showValue)
+    private val showTypeColumnCheck = JCheckBox("Type", settings.columnVisibility.showType)
+    private val showSourceColumnCheck = JCheckBox("Source", settings.columnVisibility.showSource)
+    private val showPixelEquivalentCheck = JCheckBox("Pixel Equivalent", settings.columnVisibility.showPixelEquivalent)
+    private val showHexValueCheck = JCheckBox("Hex Value", settings.columnVisibility.showHexValue)
+    private val showWcagContrastCheck = JCheckBox("WCAG Contrast", settings.columnVisibility.showWcagContrast)
+
+
     // Index-scope
     private val projectOnlyRadio = JRadioButton(
         "Project files only",
@@ -182,7 +193,8 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
                 allowIdeCompletionsCheck.isSelected != settings.allowIdeCompletions ||
                 getSelectedScope() != settings.indexingScope ||
                 (maxImportDepthSpinner.value as Int) != settings.maxImportDepth ||
-                getSelectedSortingOrder() != settings.sortingOrder
+                getSelectedSortingOrder() != settings.sortingOrder ||
+                isColumnVisibilityModified()
 
     override fun apply() {
         settings.showContextValues = showContextValuesCheck.isSelected
@@ -190,6 +202,17 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
         settings.indexingScope = getSelectedScope()
         settings.maxImportDepth = maxImportDepthSpinner.value as Int
         settings.sortingOrder = getSelectedSortingOrder()
+
+        settings.columnVisibility = CssVarsAssistantSettings.ColumnVisibility(
+            showContext = showContextColumnCheck.isSelected,
+            showColorSwatch = showColorSwatchCheck.isSelected,
+            showValue = showValueColumnCheck.isSelected,
+            showType = showTypeColumnCheck.isSelected,
+            showSource = showSourceColumnCheck.isSelected,
+            showPixelEquivalent = showPixelEquivalentCheck.isSelected,
+            showHexValue = showHexValueCheck.isSelected,
+            showWcagContrast = showWcagContrastCheck.isSelected
+        )
     }
 
     override fun reset() {
@@ -205,6 +228,17 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
             CssVarsAssistantSettings.SortingOrder.DESC -> descRadio.isSelected = true
         }
         maxImportDepthSpinner.value = settings.maxImportDepth
+
+        // Reset column visibility checkboxes
+        showContextColumnCheck.isSelected = settings.columnVisibility.showContext
+        showColorSwatchCheck.isSelected = settings.columnVisibility.showColorSwatch
+        showValueColumnCheck.isSelected = settings.columnVisibility.showValue
+        showTypeColumnCheck.isSelected = settings.columnVisibility.showType
+        showSourceColumnCheck.isSelected = settings.columnVisibility.showSource
+        showPixelEquivalentCheck.isSelected = settings.columnVisibility.showPixelEquivalent
+        showHexValueCheck.isSelected = settings.columnVisibility.showHexValue
+        showWcagContrastCheck.isSelected = settings.columnVisibility.showWcagContrast
+
         updateImportDepthState()
     }
 
@@ -241,6 +275,43 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
         section("Display Options:")
         item(showContextValuesCheck)
         item(allowIdeCompletionsCheck)
+
+
+        section("Documentation Popup Columns:")
+        item(createDescriptionLabel("Choose which columns to display in the documentation popup:"))
+
+        // Create a grid panel for column checkboxes
+        val columnsPanel = JPanel(GridBagLayout()).apply {
+            val colGbc = GridBagConstraints().apply {
+                anchor = GridBagConstraints.WEST
+                insets = JBUI.insets(2, 0, 2, 20)
+            }
+
+            // First column
+            colGbc.gridx = 0
+            colGbc.gridy = 0
+            add(showContextColumnCheck, colGbc)
+            colGbc.gridy = 1
+            add(showColorSwatchCheck, colGbc)
+            colGbc.gridy = 2
+            add(showValueColumnCheck, colGbc)
+            colGbc.gridy = 3
+            add(showTypeColumnCheck, colGbc)
+
+            // Second column
+            colGbc.gridx = 1
+            colGbc.gridy = 0
+            add(showSourceColumnCheck, colGbc)
+            colGbc.gridy = 1
+            add(showPixelEquivalentCheck, colGbc)
+            colGbc.gridy = 2
+            add(showHexValueCheck, colGbc)
+            colGbc.gridy = 3
+            add(showWcagContrastCheck, colGbc)
+        }
+        item(columnsPanel, 25)
+        item(createDescriptionLabel("Note: Some columns only appear when relevant (e.g., Hex column for color values)"), 25)
+
 
         section("Variable Indexing Scope:")
         item(projectOnlyRadio, descr = "Only variables defined in your project files are indexed.")
@@ -296,5 +367,17 @@ class CssVarsAssistantConfigurable : Configurable, Disposable {
     private fun getSelectedSortingOrder(): CssVarsAssistantSettings.SortingOrder = when {
         ascRadio.isSelected -> CssVarsAssistantSettings.SortingOrder.ASC
         else -> CssVarsAssistantSettings.SortingOrder.DESC
+    }
+
+    private fun isColumnVisibilityModified(): Boolean {
+        val currentVisibility = settings.columnVisibility
+        return showContextColumnCheck.isSelected != currentVisibility.showContext ||
+                showColorSwatchCheck.isSelected != currentVisibility.showColorSwatch ||
+                showValueColumnCheck.isSelected != currentVisibility.showValue ||
+                showTypeColumnCheck.isSelected != currentVisibility.showType ||
+                showSourceColumnCheck.isSelected != currentVisibility.showSource ||
+                showPixelEquivalentCheck.isSelected != currentVisibility.showPixelEquivalent ||
+                showHexValueCheck.isSelected != currentVisibility.showHexValue ||
+                showWcagContrastCheck.isSelected != currentVisibility.showWcagContrast
     }
 }

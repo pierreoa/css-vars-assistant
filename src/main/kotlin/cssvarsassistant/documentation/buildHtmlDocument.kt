@@ -4,12 +4,13 @@ import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
-import cssvarsassistant.documentation.v2.CssVariableDocumentationService
 import cssvarsassistant.model.CssVarDoc
+import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.ARROW_UP_RIGHT
 import cssvarsassistant.util.ValueUtil
 import kotlin.math.pow
 import kotlin.math.roundToInt
+
 
 fun buildHtmlDocument(
     varName: String,
@@ -19,12 +20,25 @@ fun buildHtmlDocument(
     winnerIndex: Int = -1  // Default for backward compatibility
 ): String {
     val logger = logger<CssVariableDocumentationService>()
+    val settings = CssVarsAssistantSettings.getInstance()
+    val columnVisibility = settings.columnVisibility
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
-    val showWcagCol = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
-    val showHexCol = sorted.any { (_, r, _) ->
+    val hasColorValues = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
+    val hasNonHexColors = sorted.any { (_, r, _) ->
         ColorParser.parseCssColor(r.resolved)?.let { !r.resolved.trim().startsWith("#") } ?: false
     }
+
+    // Determine which columns to actually show
+    val showContextCol = columnVisibility.showContext
+    val showColorSwatchCol = columnVisibility.showColorSwatch && hasColorValues
+    val showValueCol = columnVisibility.showValue
+    val showTypeCol = columnVisibility.showType
+    val showSourceCol = columnVisibility.showSource
+    val showPixelEqCol = columnVisibility.showPixelEquivalent && showPixelCol
+    val showHexCol = columnVisibility.showHexValue && hasColorValues && hasNonHexColors
+    val showWcagCol = columnVisibility.showWcagContrast && hasColorValues
+
 
     val winnerFirstSorted = if (winnerIndex >= 0) {
         val winner = sorted[winnerIndex]
@@ -62,20 +76,17 @@ fun buildHtmlDocument(
     }
 
     /* ── table header ─────────────────────────────────────────────────────── */
-    sb.append(
-        """
-        <p><b>Values:</b></p>
-        <table>
-          <tr $headerWrapperStyle>
-            <th><nobr>Context</nobr></th>
-            <th>&nbsp;</th>
-            <th><nobr>Value</nobr></th>
-            <th><nobr>Type</nobr></th>
-            <th><nobr>Source</nobr></th>""".trimIndent()
-    )
-    if (showPixelCol) sb.append("<th><nobr>px&nbsp;Eq.</nobr></th>")
+    sb.append("""<table><tr $headerWrapperStyle>""")
+
+    if (showContextCol) sb.append("<th><nobr>Context</nobr></th>")
+    if (showColorSwatchCol) sb.append("<th>&nbsp;</th>")
+    if (showValueCol) sb.append("<th><nobr>Value</nobr></th>")
+    if (showTypeCol) sb.append("<th><nobr>Type</nobr></th>")
+    if (showSourceCol) sb.append("<th><nobr>Source</nobr></th>")
+    if (showPixelEqCol) sb.append("<th><nobr>px&nbsp;Eq.</nobr></th>")
     if (showHexCol) sb.append("<th><nobr>Hex</nobr></th>")
     if (showWcagCol) sb.append("<th><nobr>WCAG</nobr></th>")
+
     sb.append("</tr>")
 
     /* ── table rows ───────────────────────────────────────────────────────── */
@@ -102,80 +113,92 @@ fun buildHtmlDocument(
             "%.2f:1".format((1.05) / (l + 0.05))
         } ?: "—"
         val hexValue = colorObj?.toHex() ?: "—"
-
         /* –– row –– */
         sb.append("<tr style='$rowStyleExtra'>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
-            .append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
-            .append("<td $rowStyle><nobr>")
-            .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
 
-        // Mark overridden values
-        if (isOverridden) {
-            sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
+        if (showContextCol) {
+            sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
         }
 
-        if (resInfo.steps.isNotEmpty()) {
-            logger.info("Variable: $varName")
-            logger.info("Original: ${resInfo.original}")
-            logger.info("Resolved: ${resInfo.resolved}")
-            logger.info("Steps: ${resInfo.steps}")
-            logger.info("Steps joined: ${resInfo.steps.joinToString(" → ")}")
+        if (showColorSwatchCol) {
+            sb.append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
         }
 
-        // Add resolution indicator
-        if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
-            val SPACE = "&nbsp;"
+        if (showValueCol) {
+            sb.append("<td $rowStyle><nobr>")
+                .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
 
-            // Create a readable tooltip with proper formatting
-            val tooltipText = buildTooltipText(resInfo, rawValue)
+            // Mark overridden values
+            if (isOverridden) {
+                sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
+            }
 
-            sb.append(
-                """$SPACE<div title="${StringUtil.escapeXmlEntities(tooltipText)}" 
+            if (resInfo.steps.isNotEmpty()) {
+                logger.info("Variable: $varName")
+                logger.info("Original: ${resInfo.original}")
+                logger.info("Resolved: ${resInfo.resolved}")
+                logger.info("Steps: ${resInfo.steps}")
+                logger.info("Steps joined: ${resInfo.steps.joinToString(" → ")}")
+            }
+
+            // Add resolution indicator
+            if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+                val SPACE = "&nbsp;"
+
+                // Create a readable tooltip with proper formatting
+                val tooltipText = buildTooltipText(resInfo, rawValue)
+
+                sb.append(
+                    """$SPACE<div title="${StringUtil.escapeXmlEntities(tooltipText)}" 
                     $rowResolvedStyle>$SPACE$ARROW_UP_RIGHT$SPACE</div>"""
-            )
+                )
+            }
+            sb.append("</nobr></td>")
+                .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
+                .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+
+            if (showSourceCol) {
+                sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+            }
+
+            if (showPixelEqCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
+            if (showHexCol) sb.append("<td $rowStyle><nobr>$hexValue</nobr></td>")
+            if (showWcagCol) sb.append("<td $rowStyle><nobr>$contrast</nobr></td>")
+
+            sb.append("</tr>")
         }
-        sb.append("</nobr></td>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+        sb.append("</table>")
 
-        if (showPixelCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
-        if (showHexCol) sb.append("<td $rowStyle><nobr>$hexValue</nobr></td>")
-        if (showWcagCol) sb.append("<td $rowStyle><nobr>$contrast</nobr></td>")
+        /* ── description / examples ──────────────────────────────────────────── */
+        if (doc.description.isNotBlank()) {
+            sb.append("<p><b>Description:</b><br/>")
+                .append(StringUtil.escapeXmlEntities(doc.description))
+                .append("</p>")
+        }
+        if (doc.examples.isNotEmpty()) {
+            sb.append("<p><b>Examples:</b></p><pre>")
+            doc.examples.forEach { sb.append(StringUtil.escapeXmlEntities(it)).append('\n') }
+            sb.append("</pre>")
+        }
 
-        sb.append("</tr>")
-    }
-    sb.append("</table>")
-
-    /* ── description / examples ──────────────────────────────────────────── */
-    if (doc.description.isNotBlank()) {
-        sb.append("<p><b>Description:</b><br/>")
-            .append(StringUtil.escapeXmlEntities(doc.description))
-            .append("</p>")
-    }
-    if (doc.examples.isNotEmpty()) {
-        sb.append("<p><b>Examples:</b></p><pre>")
-        doc.examples.forEach { sb.append(StringUtil.escapeXmlEntities(it)).append('\n') }
-        sb.append("</pre>")
-    }
-
-    /* ── WebAIM helper link for first colour found ───────────────────────── */
-    sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }
-        .firstOrNull()?.let { c ->
-            sb.append(
-                """<p style='margin-top:10px'>
+        /* ── WebAIM helper link for first colour found ───────────────────────── */
+        sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }
+            .firstOrNull()?.let { c ->
+                sb.append(
+                    """<p style='margin-top:10px'>
                        <a target="_blank"
                           href="https://webaim.org/resources/contrastchecker/?fcolor=${
-                    c.toHex().removePrefix("#")
-                }&bcolor=000000">
+                        c.toHex().removePrefix("#")
+                    }&bcolor=000000">
                           Check contrast on WebAIM Contrast Checker
                        </a></p>"""
-            )
-        }
+                )
+            }
 
-    sb.append(DocumentationMarkup.CONTENT_END)
-    return sb.toString()
-}
+        sb.append(DocumentationMarkup.CONTENT_END)
+        return sb.toString()
+    }
+
 
 /* ── tiny util helpers ─────────────────────────────────────────────────────── */
 fun java.awt.Color.toHex(): String =
@@ -231,7 +254,6 @@ fun contextLabel(ctx: String, isColor: Boolean): String {
 
 fun colorSwatchHtml(css: String): String =
     ColorParser.parseCssColor(css)?.let { "<font color='${it.toHex()}'>&#9632;</font>" } ?: "&nbsp;"
-
 
 /**
  * Creates a readable tooltip showing the complete resolution chain
