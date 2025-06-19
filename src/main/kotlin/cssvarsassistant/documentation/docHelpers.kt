@@ -14,7 +14,7 @@ import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* ───────────────────────── Dochelper ─────────────────────────────────────────────── */
 
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
 
