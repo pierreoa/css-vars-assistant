@@ -19,9 +19,9 @@ fun buildHtmlDocument(
     showPixelCol: Boolean,
     winnerIndex: Int = -1  // Default for backward compatibility
 ): String {
-    val logger = logger<CssVariableDocumentationService>()
     val settings = CssVarsAssistantSettings.getInstance()
     val columnVisibility = settings.columnVisibility
+    val logger = logger<CssVariableDocumentationService>()
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
     val hasColorValues = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
@@ -50,9 +50,9 @@ fun buildHtmlDocument(
 
     /* ── inline-CSS helpers (survive IntelliJ trimming) ────────────────────── */
     val headerWrapperStyle =
-        "style='color:#F2F2F2;padding:2px 4px;font-weight:bold;border-bottom:1px solid #BABABA;'"
-    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;'"
-    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:10px;'"
+        "style='color:#F2F2F2;padding:0px;font-weight:bold;border-bottom:1px solid #BABABA;'"
+    val rowStyle = "style='white-space:nowrap;padding:10px 20px;color:#BABABA;'"
+    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:9px!important;'"
 
     /* ── builder start ─────────────────────────────────────────────────────── */
     val sb = StringBuilder()
@@ -116,6 +116,7 @@ fun buildHtmlDocument(
         /* –– row –– */
         sb.append("<tr style='$rowStyleExtra'>")
 
+
         if (showContextCol) {
             sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
         }
@@ -132,75 +133,75 @@ fun buildHtmlDocument(
             if (isOverridden) {
                 sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
             }
-
-            if (resInfo.steps.isNotEmpty()) {
-                logger.info("Variable: $varName")
-                logger.info("Original: ${resInfo.original}")
-                logger.info("Resolved: ${resInfo.resolved}")
-                logger.info("Steps: ${resInfo.steps}")
-                logger.info("Steps joined: ${resInfo.steps.joinToString(" → ")}")
-            }
-
-            // Add resolution indicator
-            if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
-                val SPACE = "&nbsp;"
-
-                // Create a readable tooltip with proper formatting
-                val tooltipText = buildTooltipText(resInfo, rawValue)
-
-                sb.append(
-                    """$SPACE<div title="${StringUtil.escapeXmlEntities(tooltipText)}" 
-                    $rowResolvedStyle>$SPACE$ARROW_UP_RIGHT$SPACE</div>"""
-                )
-            }
-            sb.append("</nobr></td>")
-                .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
-                .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
-
-            if (showSourceCol) {
-                sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
-            }
-
-            if (showPixelEqCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
-            if (showHexCol) sb.append("<td $rowStyle><nobr>$hexValue</nobr></td>")
-            if (showWcagCol) sb.append("<td $rowStyle><nobr>$contrast</nobr></td>")
-
-            sb.append("</tr>")
-        }
-        sb.append("</table>")
-
-        /* ── description / examples ──────────────────────────────────────────── */
-        if (doc.description.isNotBlank()) {
-            sb.append("<p><b>Description:</b><br/>")
-                .append(StringUtil.escapeXmlEntities(doc.description))
-                .append("</p>")
-        }
-        if (doc.examples.isNotEmpty()) {
-            sb.append("<p><b>Examples:</b></p><pre>")
-            doc.examples.forEach { sb.append(StringUtil.escapeXmlEntities(it)).append('\n') }
-            sb.append("</pre>")
         }
 
-        /* ── WebAIM helper link for first colour found ───────────────────────── */
-        sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }
-            .firstOrNull()?.let { c ->
-                sb.append(
-                    """<p style='margin-top:10px'>
-                       <a target="_blank"
-                          href="https://webaim.org/resources/contrastchecker/?fcolor=${
-                        c.toHex().removePrefix("#")
-                    }&bcolor=000000">
-                          Check contrast on WebAIM Contrast Checker
-                       </a></p>"""
-                )
-            }
+        if (resInfo.steps.isNotEmpty()) {
+            logger.info("Variable: $varName")
+            logger.info("Original: ${resInfo.original}")
+            logger.info("Resolved: ${resInfo.resolved}")
+            logger.info("Steps: ${resInfo.steps}")
+            logger.info("Steps joined: ${resInfo.steps.joinToString(" → ")}")
+        }
 
-        sb.append(DocumentationMarkup.CONTENT_END)
-        return sb.toString()
+        // Add resolution indicator
+        if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+            val space = "&nbsp;"
+
+            // Create a readable tooltip with proper formatting
+            val tooltipText = buildTooltipText(resInfo, rawValue)
+
+            sb.append(
+                """$space<div title="${StringUtil.escapeXmlEntities(tooltipText)}" 
+                    $rowResolvedStyle>$space$ARROW_UP_RIGHT$space</div>"""
+            )
+        }
+        sb.append("</nobr></td>")
+            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
+            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+
+        if (showSourceCol) {
+            sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+        }
+
+        if (showPixelEqCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
+        if (showHexCol) sb.append("<td $rowStyle><nobr>$hexValue</nobr></td>")
+        if (showWcagCol) sb.append("<td $rowStyle><nobr>$contrast</nobr></td>")
+
+        sb.append("</tr>")
+    }
+    sb.append("</table>")
+
+    /* ── description / examples ──────────────────────────────────────────── */
+    if (doc.description.isNotBlank()) {
+        sb.append("<p><b>Description:</b><br/>")
+            .append(StringUtil.escapeXmlEntities(doc.description))
+            .append("</p>")
+    }
+    if (doc.examples.isNotEmpty()) {
+        sb.append("<p><b>Examples:</b></p><pre>")
+        doc.examples.forEach { sb.append(StringUtil.escapeXmlEntities(it)).append('\n') }
+        sb.append("</pre>")
     }
 
+    /* ── WebAIM helper link for first colour found ───────────────────────── */
+    sorted.firstNotNullOfOrNull { ColorParser.parseCssColor(it.second.resolved) }?.let { c ->
+        sb.append(
+            """<p style='margin-top:10px'>
+                       <a target="_blank"
+                          href="https://webaim.org/resources/contrastchecker/?fcolor=${
+                c.toHex().removePrefix("#")
+            }&bcolor=000000">
+                          Check contrast on WebAIM Contrast Checker
+                       </a></p>"""
+        )
+    }
 
-    /* ── tiny util helpers ─────────────────────────────────────────────────────── */
+    sb.append(DocumentationMarkup.CONTENT_END)
+    return sb.toString()
+}
+
+
+/* ── tiny util helpers ─────────────────────────────────────────────────────── */
 fun java.awt.Color.toHex(): String =
     "#%02x%02x%02x".format(red, green, blue)
 
