@@ -1,15 +1,22 @@
-# CSS Variables Assistant **(--)** Changelog
+[# CSS Variables Assistant **(--)** Changelog
 
 All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
----
 
-## [1.5.1] – 2025‑06‑17
+## [1.5.1] – 2025-06-20
+
+### Added
+- **Customizable Documentation Columns:** Users can now select which columns (e.g., Context, Value, Source, WCAG Contrast) are visible in the documentation popup via the settings panel.
+- **Resolution Chain Tooltip:** Hovering over a variable in the documentation now displays a detailed tooltip showing the full resolution chain, explaining how the final value was derived.
 
 ### Changed
+- **Performance and Memory Management:** Caching mechanisms have been overhauled for better performance and reduced memory usage, especially in large projects.
+- **Dynamic Documentation Table:** The documentation popup now dynamically generates columns based on user settings and the variable's value type, improving clarity and relevance.
+- **Settings UI:** The settings panel has been updated to include controls for the new column visibility feature.
 
-- **Documentation menu styling** - Removed border bottom from each table header and re-adds it to the wrapping
-  table-header. This removes annoying spaces between table headers.
+### Fixed
+- **Resolution Accuracy:** Corrected a bug where the resolution chain was not always fully preserved in the cache, ensuring documentation is always accurate.
+- **UI Styling:** Fixed minor styling issues in the documentation table for better readability.
 
 ---
 
@@ -297,3 +304,4 @@ Existing users keep their previous scope; switch manually via **Settings → Too
 - Improved context checks and minor bugfixes
 - Improved performance and reduced memory usage
 - Improved documentation and code comments
+]()

@@ -142,6 +142,8 @@ intellijPlatform {
   Supercharge your CSS custom properties and pre-processor variables in JetBrains IDEs with advanced autocomplete, rich documentation, and powerful debugging tools.
 </p>
 <ul>
+  <li><b>Customizable Documentation Columns</b> – choose what you see (Context, Value, Source, etc.).</li>
+  <li><b>Resolution Chain Tooltip</b> – hover to see the full resolution path of a variable.</li>
   <li><b>Instant variable lookup</b> – blazing-fast completions for <code>CSS</code>, <code>SCSS</code>, <code>SASS</code> and <code>LESS</code> variables.</li>
   <li><b>Smart autocomplete</b> – context-aware suggestions inside <code>var(--…)</code>, <code>@less</code> and <code>${'$'}scss</code>, sorted by value or context.</li>
   <li><b>Rich documentation pop-ups</b> – value tables (px equivalents), context labels, color swatches with contrast info, plus <i>dynamic</i> <code>px Eq.</code>, <code>Hex</code> and <code>WCAG</code> columns that appear only when relevant.</li>
@@ -156,19 +158,27 @@ intellijPlatform {
   <li><b>Works everywhere</b> – <code>CSS</code>, <code>SCSS</code>, <code>SASS</code>, <code>LESS</code>.</li>
 </ul>
 <p>
-  <b>🏅New in 1.5.1:</b> Updated documentation menu's table header styling.
-</p>
-<p>
-  <b>✨ New in 1.5.0:</b> IntelliJ 2024.1+ documentation API support, dynamic value-table columns, recursively/derived variable completions marked with (↗), improved DebugImportResolution helper, CSS cascade compliance with winner-first documentation, and centralized index versioning.
+  <b>✨ New in 1.5.1:</b> Customizable documentation columns, a resolution chain tooltip for variables, and major performance/memory improvements.
 </p>
 """.trimIndent()
 
         changeNotes = """
-<h2>1.5.1 – 2025-06-17</h2>
-
+<h2>1.5.1 – 2025-06-20</h2>
+<h3>Added</h3>
+<ul>
+  <li><b>Customizable Documentation Columns:</b> Users can now select which columns (e.g., Context, Value, Source, WCAG Contrast) are visible in the documentation popup via the settings panel.</li>
+  <li><b>Resolution Chain Tooltip:</b> Hovering over a variable in the documentation now displays a detailed tooltip showing the full resolution chain, explaining how the final value was derived.</li>
+</ul>
 <h3>Changed</h3>
 <ul>
-  <li><b>Documentation menu styling</b> Removed border bottom from each table header and re-adds it to the wrapping table-header, to avoid annoying spaces between table headers.</li>
+  <li><b>Performance and Memory Management:</b> Caching mechanisms have been overhauled for better performance and reduced memory usage, especially in large projects.</li>
+  <li><b>Dynamic Documentation Table:</b> The documentation popup now dynamically generates columns based on user settings and the variable's value type, improving clarity and relevance.</li>
+  <li><b>Settings UI:</b> The settings panel has been updated to include controls for the new column visibility feature.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+  <li><b>Resolution Accuracy:</b> Corrected a bug where the resolution chain was not always fully preserved in the cache, ensuring documentation is always accurate.</li>
+  <li><b>UI Styling:</b> Fixed minor styling issues in the documentation table for better readability.</li>
 </ul>
 """.trimIndent()
     }
