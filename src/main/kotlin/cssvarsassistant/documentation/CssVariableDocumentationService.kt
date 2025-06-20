@@ -56,7 +56,6 @@ object CssVariableDocumentationService {
                 EntryWithSource(ctx, resInfo, comment, isLocal)
             }
 
-            println("\n\nEnriched Entries: $enrichedEntries")
 
             val collapsed = enrichedEntries
                 .asReversed()

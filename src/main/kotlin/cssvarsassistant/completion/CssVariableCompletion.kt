@@ -249,22 +249,18 @@ class CssVariableCompletion : CompletionContributor() {
             }
 
             /* @less / $scss ----------------------------------------------- */
-            /*            Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())?.let { m ->
-                            val varName = m.groupValues[1]
-                            CssVarCompletionCache.get(project, varName)?.let { return it }
-
-                            val resolved = findPreprocessorVariableValue(project, varName)
-                            if (resolved != null) CssVarCompletionCache.put(project, varName, resolved)
-                            return resolved ?: raw
-                        }*/
-
             Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())?.let { m ->
                 val varName = m.groupValues[1]
-                CssVarCompletionCache.get(project, varName)?.let { return it }
+                // **FIXED**: Use getResolved method for backwards compatibility with completion
+                CssVarCompletionCache.getResolved(project, varName)?.let { return it }
 
                 val resolved = findPreprocessorVariableValue(project, varName)?.resolved
                 if (resolved != null && resolved != raw) {
-                    CssVarCompletionCache.put(project, varName, resolved)
+                    // **FIXED**: Store complete ResolutionInfo in cache, but extract resolved value for completion
+                    val resolutionInfo = findPreprocessorVariableValue(project, varName)
+                    if (resolutionInfo != null) {
+                        CssVarCompletionCache.put(project, varName, resolutionInfo)
+                    }
                     return resolved
                 }
                 return raw
@@ -418,12 +414,4 @@ class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
         icon1.paintIcon(c, g, x, y)
         icon2.paintIcon(c, g, x + icon1.iconWidth + 2, y)
     }
-}
-
-private fun lastLocalValue(params: CompletionParameters, varName: String): String? {
-    val text = params.originalFile.text
-    val regex = Regex("""\Q$varName\E\s*:\s*([^;]+);""")
-    return regex.findAll(text)
-        .map { it.groupValues[1].trim() }
-        .lastOrNull()
 }

@@ -1,4 +1,3 @@
-// CssVariableDocumentationTarget.kt
 package cssvarsassistant.documentation.v2
 
 import com.intellij.model.Pointer

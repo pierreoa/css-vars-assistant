@@ -23,8 +23,9 @@ object PreprocessorUtil {
     /**
      * Cache key uses project.hashCode() instead of Project object to avoid
      * strong references that would pin the class-loader and block dynamic unload.
+     * Now stores complete ResolutionInfo objects to preserve resolution steps.
      */
-    private val cache = ConcurrentHashMap<Triple<Int, String, Int>, String?>()
+    private val cache = ConcurrentHashMap<Triple<Int, String, Int>, ResolutionInfo?>()
 
     /**
      * Simple resolution for completion - returns just the final resolved value.
@@ -53,12 +54,9 @@ object PreprocessorUtil {
 
         // Use project.hashCode() instead of project object for cache key
         val key = Triple(project.hashCode(), varName, scope.hashCode())
-        cache[key]?.let { cachedValue ->
-            return ResolutionInfo(
-                original = "@$varName",
-                resolved = cachedValue,
-                steps = steps + "@$varName"
-            )
+        cache[key]?.let { cachedResolutionInfo ->
+            // **FIXED**: Return the complete cached ResolutionInfo with preserved steps
+            return cachedResolutionInfo
         }
 
         return try {
@@ -83,7 +81,8 @@ object PreprocessorUtil {
                             resolved = computed,
                             steps = baseResolution.steps + "($baseVal $op ${rhsMaybe ?: ""}) = $computed"
                         )
-                        cache[key] = computed // Cache just the final value
+                        // **FIXED**: Cache complete ResolutionInfo instead of just final value
+                        cache[key] = result
                         return result
                     }
                 }
@@ -99,7 +98,8 @@ object PreprocessorUtil {
                         resolved = resolution.resolved,
                         steps = resolution.steps
                     )
-                    cache[key] = resolution.resolved // Cache just the final value
+                    // **FIXED**: Cache complete ResolutionInfo instead of just final value
+                    cache[key] = result
                     return result
                 }
 
@@ -109,7 +109,8 @@ object PreprocessorUtil {
                     resolved = raw,
                     steps = steps + "@$varName"
                 )
-                cache[key] = raw // Cache just the final value
+                // **FIXED**: Cache complete ResolutionInfo instead of just final value
+                cache[key] = result
                 return result
             }
 

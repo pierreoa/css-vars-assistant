@@ -27,7 +27,6 @@ fun resolveVarValue(
     depth: Int = 0,
     steps: List<String> = emptyList()
 ): ResolutionInfo {
-    println("\n== resolveVarValue ==")
     val settings = CssVarsAssistantSettings.getInstance()
     if (depth > settings.maxImportDepth) return ResolutionInfo(raw, raw, steps)
 
@@ -37,7 +36,6 @@ fun resolveVarValue(
         Regex("""var\(\s*(--[\w-]+)\s*\)""").find(raw)?.let { m ->
             val ref = m.groupValues[1]
             if (ref !in visited) {
-                println("\ninside if")
                 val newSteps = steps + "var($ref)"
                 val cssScope = ScopeUtil.effectiveCssIndexingScope(project, settings)
                 val entries = FileBasedIndex.getInstance()
@@ -51,42 +49,27 @@ fun resolveVarValue(
                 }.let { list ->
                     list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
                 }
-                println("\ndefVal: \n$defVal")
-                println("\nvisited: \n$visited")
-                println("\nsteps: \n$steps")
-                println("\nnewSteps: \n$newSteps")
-                println("\nref: \n$ref")
-                println("\nentries: \n$entries")
-
                 if (defVal != null)
                     return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
             }
-            println("\ninside else")
             return ResolutionInfo(raw, raw, steps)
         }
 
         val preprocessorMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
-        println("\npreprocessorMatch: \n$preprocessorMatch")
         if (preprocessorMatch != null) {
             val varName = preprocessorMatch.groupValues[1]
-            val prefix = if (raw.contains("@")) "@" else "$"
             val currentScope = ScopeUtil.currentPreprocessorScope(project)
 
             // **KEEP**: Check cache first (important for performance!)
-            CssVarCompletionCache.get(project, varName, currentScope)?.let {
-                val cachedValue = ResolutionInfo(raw, it, steps + "$prefix$varName")
-                println("\nCache hit for variable: $varName")
-                println("Cached Value:  $cachedValue")
-                return cachedValue
+            CssVarCompletionCache.get(project, varName, currentScope)?.let { cachedResolutionInfo ->
+                // Return the cached ResolutionInfo with preserved steps
+                return cachedResolutionInfo
             }
 
             // **FIXED**: Get resolution info with steps from preprocessor
             val resolution = findPreprocessorVariableValue(project, varName, steps)
-            println("\nresolution: \n$resolution")
             if (resolution != null && resolution.resolved != raw) {
-                println("\nCache miss for variable: $varName")
-                // **KEEP**: Store in cache for future lookups
-                CssVarCompletionCache.put(project, varName, currentScope, resolution.resolved)
+                CssVarCompletionCache.put(project, varName, currentScope, resolution)
                 return ResolutionInfo(
                     original = raw,
                     resolved = resolution.resolved,
@@ -112,7 +95,6 @@ fun findPreprocessorVariableValue(
     currentSteps: List<String> = emptyList()
 ): ResolutionInfo? {
     return try {
-        println("\nfindPreprocessorVariableValue: $varName")
         val freshScope = ScopeUtil.currentPreprocessorScope(project)
         val resolution = PreprocessorUtil.resolveVariableWithSteps(
             project,
@@ -121,7 +103,6 @@ fun findPreprocessorVariableValue(
             emptySet(),
             currentSteps
         )
-        println("\nResolution result: $resolution")
         return resolution
     } catch (e: ProcessCanceledException) {
         throw e
@@ -161,5 +142,4 @@ fun lastLocalValueInFile(fileText: String, varName: String): String? =
         .findAll(fileText)
         .map { it.groupValues[1].trim() }
         .lastOrNull()
-
 
