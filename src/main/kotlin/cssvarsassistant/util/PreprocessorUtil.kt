@@ -5,6 +5,7 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.containers.CollectionFactory
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.documentation.ResolutionInfo
 import cssvarsassistant.index.PREPROCESSOR_VARIABLE_INDEX_NAME
@@ -25,7 +26,7 @@ object PreprocessorUtil {
      * strong references that would pin the class-loader and block dynamic unload.
      * Now stores complete ResolutionInfo objects to preserve resolution steps.
      */
-    private val cache = ConcurrentHashMap<Triple<Int, String, Int>, ResolutionInfo?>()
+    private val cache = CollectionFactory.createConcurrentWeakKeySoftValueMap<Triple<Int, String, Int>, ResolutionInfo?>()
 
     /**
      * Simple resolution for completion - returns just the final resolved value.

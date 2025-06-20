@@ -175,7 +175,6 @@ object CssVariableDocumentationService {
                 } else {
                     "$varName → ${info.resolved}"
                 }
-                logger.info("generateHint returning: $result") // Add this line
                 result
             }
         } catch (e: Exception) {

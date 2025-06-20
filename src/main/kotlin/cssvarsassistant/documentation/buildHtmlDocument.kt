@@ -1,7 +1,6 @@
 package cssvarsassistant.documentation
 
 import com.intellij.lang.documentation.DocumentationMarkup
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
 import cssvarsassistant.model.CssVarDoc
@@ -21,12 +20,6 @@ fun buildHtmlDocument(
 ): String {
     val settings = CssVarsAssistantSettings.getInstance()
     val columnVisibility = settings.columnVisibility
-    val logger = logger<CssVariableDocumentationService>()
-
-    logger.info("\n buildHtmlDocument");
-    logger.info("\n\n varName $varName")
-    logger.info("\n\n doc $doc")
-    logger.info("\n\n sorted $sorted")
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
     val hasColorValues = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
@@ -316,7 +309,6 @@ private fun buildTooltipText(resInfo: ResolutionInfo, finalValue: String): Strin
             append("${i + 1}. <span style='color:$colour;'>$s</span>")
             val INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
             val ARROW = "⬇"
-            val ARROW_2 = "▼"   // already better, but you can try ▼ or ⇩
 
             if (i < steps.lastIndex) {
                 append(
