@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/) and semantic-versioning.
 
-## [1.5.1] – 2025-06-20
+## [1.6.0] – 2025-06-20
 
 ### Added
 - **Customizable Documentation Columns:** Users can now select which columns (e.g., Context, Value, Source, WCAG Contrast) are visible in the documentation popup via the settings panel.

@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "com.stianlarsen"
-version = "1.5.1"
+version = "1.6.0"
 
 repositories {
     mavenCentral()
@@ -158,12 +158,12 @@ intellijPlatform {
   <li><b>Works everywhere</b> – <code>CSS</code>, <code>SCSS</code>, <code>SASS</code>, <code>LESS</code>.</li>
 </ul>
 <p>
-  <b>✨ New in 1.5.1:</b> Customizable documentation columns, a resolution chain tooltip for variables, and major performance/memory improvements.
+  <b>✨ New in 1.6.0:</b> Customizable documentation columns, a resolution chain tooltip for variables, and major performance/memory improvements.
 </p>
 """.trimIndent()
 
         changeNotes = """
-<h2>1.5.1 – 2025-06-20</h2>
+<h2>1.6.0 – 2025-06-20</h2>
 <h3>Added</h3>
 <ul>
   <li><b>Customizable Documentation Columns:</b> Users can now select which columns (e.g., Context, Value, Source, WCAG Contrast) are visible in the documentation popup via the settings panel.</li>
