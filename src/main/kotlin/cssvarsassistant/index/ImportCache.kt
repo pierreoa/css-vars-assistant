@@ -7,7 +7,6 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import cssvarsassistant.completion.CssVarCompletionCache
-import cssvarsassistant.completion.CssVarKeyCache
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 import java.util.concurrent.ConcurrentHashMap
@@ -16,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ImportCache(private val project: Project) : Disposable {
     private val LOG = Logger.getInstance(ImportCache::class.java)
     private val importedFiles = ConcurrentHashMap.newKeySet<VirtualFile>()
+
 
     fun add(files: Collection<VirtualFile>) {
         val wasEmpty = importedFiles.isEmpty()

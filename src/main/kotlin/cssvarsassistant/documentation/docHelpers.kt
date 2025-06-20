@@ -7,21 +7,19 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.completion.CssVarCompletionCache
-import cssvarsassistant.documentation.v2.ENTRY_SEP
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.settings.CssVarsAssistantSettings
 import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* ───────────────────────── Dochelper ─────────────────────────────────────────────── */
 
 data class ResolutionInfo(val original: String, val resolved: String, val steps: List<String> = emptyList())
 
 private val LOG = Logger.getInstance("cssvarsassistant.docHelpers")
 
-/* ────────────────────── resolver (uendret) ─────────────────────────────── */
-
+/* ────────────────────── resolver ─────────────────────────────── */
 fun resolveVarValue(
     project: Project,
     raw: String,
@@ -51,7 +49,6 @@ fun resolveVarValue(
                 }.let { list ->
                     list.find { it.first == "default" }?.second ?: list.firstOrNull()?.second
                 }
-
                 if (defVal != null)
                     return resolveVarValue(project, defVal, visited + ref, depth + 1, newSteps)
             }
@@ -61,17 +58,23 @@ fun resolveVarValue(
         val preprocessorMatch = Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())
         if (preprocessorMatch != null) {
             val varName = preprocessorMatch.groupValues[1]
-            val prefix = if (raw.contains("@")) "@" else "$"
             val currentScope = ScopeUtil.currentPreprocessorScope(project)
 
-            CssVarCompletionCache.get(project, varName, currentScope)?.let {
-                return ResolutionInfo(raw, it, steps + "$prefix$varName")
+            // **KEEP**: Check cache first (important for performance!)
+            CssVarCompletionCache.get(project, varName, currentScope)?.let { cachedResolutionInfo ->
+                // Return the cached ResolutionInfo with preserved steps
+                return cachedResolutionInfo
             }
 
-            val resolved = findPreprocessorVariableValue(project, varName)
-            if (resolved != null && resolved != raw) {
-                CssVarCompletionCache.put(project, varName, currentScope, resolved)
-                return ResolutionInfo(raw, resolved, steps + "$prefix$varName")
+            // **FIXED**: Get resolution info with steps from preprocessor
+            val resolution = findPreprocessorVariableValue(project, varName, steps)
+            if (resolution != null && resolution.resolved != raw) {
+                CssVarCompletionCache.put(project, varName, currentScope, resolution)
+                return ResolutionInfo(
+                    original = raw,
+                    resolved = resolution.resolved,
+                    steps = resolution.steps  // **This now contains the full chain!**
+                )
             }
         }
 
@@ -84,18 +87,32 @@ fun resolveVarValue(
     }
 }
 
-private fun findPreprocessorVariableValue(project: Project, varName: String): String? =
-    try {
+
+/* ────────────────────── Recursive Preprocessor finder ──────────────────────── */
+fun findPreprocessorVariableValue(
+    project: Project,
+    varName: String,
+    currentSteps: List<String> = emptyList()
+): ResolutionInfo? {
+    return try {
         val freshScope = ScopeUtil.currentPreprocessorScope(project)
-        PreprocessorUtil.resolveVariable(project, varName, freshScope)
+        val resolution = PreprocessorUtil.resolveVariableWithSteps(
+            project,
+            varName,
+            freshScope,
+            emptySet(),
+            currentSteps
+        )
+        return resolution
     } catch (e: ProcessCanceledException) {
         throw e
     } catch (e: Exception) {
         LOG.warn("Failed to resolve @$varName", e)
         null
     }
+}
 
-/* ────────────────────── **ny, robust** ekstraktor ──────────────────────── */
+/* ────────────────────── ** extractor ──────────────────────── */
 
 fun extractCssVariableName(element: PsiElement): String? {
     // Always check element validity first
@@ -119,10 +136,10 @@ fun extractCssVariableName(element: PsiElement): String? {
     return null
 }
 
-/* ─────────────────────── other helpers (uendret) ───────────────────────── */
-
+/* ─────────────────────── other helpers ───────────────────────── */
 fun lastLocalValueInFile(fileText: String, varName: String): String? =
     Regex("""\Q$varName\E\s*:\s*([^;]+);""")
         .findAll(fileText)
         .map { it.groupValues[1].trim() }
         .lastOrNull()
+

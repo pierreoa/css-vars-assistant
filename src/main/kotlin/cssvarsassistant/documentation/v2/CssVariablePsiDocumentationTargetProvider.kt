@@ -1,4 +1,3 @@
-// src/main/kotlin/cssvarsassistant/documentation/v2/CssVariablePsiDocumentationTargetProvider.kt
 package cssvarsassistant.documentation.v2
 
 
@@ -10,10 +9,14 @@ import cssvarsassistant.documentation.extractCssVariableName
 class CssVariablePsiDocumentationTargetProvider : PsiDocumentationTargetProvider {
 
     override fun documentationTarget(element: PsiElement, originalElement: PsiElement?): DocumentationTarget? {
+
         if (!element.isValid) return null
 
-        val varName = extractCssVariableName(element) ?: return null
-        return CssVariableDocumentationTarget(element, varName)
+        val varName = extractCssVariableName(element)
+
+        return varName?.let {
+            CssVariableDocumentationTarget(element, it)
+        }
     }
 
 }

@@ -1,6 +1,6 @@
 # CSS Variables Assistant  🔧🎨
 
-**Version:** 1.5.1<br/>
+**Version:** 1.6.0<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate 2024.1+ (and 2025.1+)  
 **Author:** Stian Larsen  
 **Repo:** [github.com/Stianlars1/css-vars-assistant](https://github.com/Stianlars1/css-vars-assistant)
@@ -12,10 +12,23 @@
 
 
 Supercharge your CSS custom properties and preprocessor variables in JetBrains IDEs with advanced autocomplete, documentation, and debugging tools.
+---
+
+## ✨ What's new in 1.6.0
+
+| Category                    | Highlights                                                                                      |
+|-----------------------------|-------------------------------------------------------------------------------------------------|
+| **✨ Customizable Docs**    | You can now **choose which columns** to display in the documentation popup!                     |
+| **🔗 Resolution Chain**      | A new tooltip shows the **entire resolution path** for a variable, explaining its final value.  |
+| **🚀 Performance**            | Caching has been significantly improved for **better performance and memory management**.       |
+| **💅 Dynamic UI**             | The documentation table now **dynamically adjusts its columns** based on your settings.         |
+| **⚙️ New Settings**           | Easily manage the new column visibility options from the settings panel.                        |
+
+[Full Changelog →](https://github.com/Stianlars1/css-vars-assistant/blob/main/CHANGELOG.md)
 
 ---
 
-## ✨ What's new in 1.5.1
+## 🏅 Previous highlights
 
 | Category                    | Highlights                                                                                      |
 |-----------------------------|-------------------------------------------------------------------------------------------------|
@@ -29,23 +42,6 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
 | **📖 Derived variable legend**  | Documentation now includes an explanation of the ↗ symbol when variables are resolved through imports or references. |
 | **⚡ Robustness & accuracy** | Smarter context labels, improved media query parsing, color parsing, and documentation rendering. |
 | **🚀 Performance & refactors**| Faster, more maintainable codebase with centralized index versioning and better caching.        |
-
-[Full Changelog →](https://github.com/Stianlars1/css-vars-assistant/blob/main/CHANGELOG.md)
-
----
-
-## 🏅 Previous highlights
-
-| Category                      | Highlights                                                                                  |
-|-------------------------------|---------------------------------------------------------------------------------------------|
-| **🛠️ Preprocessor index**      | LESS/SCSS variables are now indexed for instant lookup and resolution.                      |
-| **🔍 Smarter var() detection** | Completions work even while typing incomplete `var(` and resolve aliases more quickly.       |
-| **📏 Value-based sorting**     | Variable completions are sorted by their numeric value (asc/desc, configurable).            |
-| **📐 Pixel equivalents in docs**| Documentation now shows the pixel equivalent for rem/em/%/vh/vw/pt values.                  |
-| **🧠 Context sorting**         | Contexts (Default, Light, Dark, min/max-width, etc.) are now ranked logically.             |
-| **⚡ Performance & robustness**| Race conditions and duplicate completions fixed, smarter scope caching, better error handling.|
-| **🧪 Test coverage**           | Extensive automated tests for value handling, context ranking, and pixel conversion.        |
-
 ---
 
 ## Features
@@ -53,6 +49,8 @@ Supercharge your CSS custom properties and preprocessor variables in JetBrains I
 - **Instant variable lookup:** Blazing-fast completions and documentation for `CSS`, `SCSS`, `SASS` and `LESS` variables.
 - **Smart autocomplete:** Context-aware suggestions for `var(--…)`, `@less`, and `$scss` with value/context-based sorting.
 - **Rich documentation popups:**
+    - **Customizable Columns:** Choose what you see (Context, Value, Source, etc.).
+    - **Resolution Chain:** A tooltip shows the full resolution path of a variable.
     - Value tables (with px equivalents for rem/em/%/vh/vw/pt)
     - Context labels (Default, Dark, min-width, etc.)
     - Color swatches and contrast info

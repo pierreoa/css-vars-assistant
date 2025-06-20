@@ -7,6 +7,7 @@ import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
+import cssvarsassistant.documentation.CssVariableDocumentationService
 
 /**
  * Documentation Target for CSS Variables using the new Documentation Target API (2023.1+).
@@ -21,8 +22,8 @@ class CssVariableDocumentationTarget(
     private val element: PsiElement,
     private val varName: String
 ) : DocumentationTarget {
-    private val LOG = Logger.getInstance(CssVariableDocumentationTarget::class.java)
 
+    private val LOG = Logger.getInstance(CssVariableDocumentationTarget::class.java)
 
     override fun computePresentation(): TargetPresentation =
         TargetPresentation.builder(varName)
@@ -32,11 +33,15 @@ class CssVariableDocumentationTarget(
     override fun computeDocumentation(): DocumentationResult? {
         LOG.debug("V2 API called for $varName")
         val html = CssVariableDocumentationService.generateDocumentation(element, varName)
-        return html?.let { DocumentationResult.documentation(it) }
+            ?: return null
+
+        return DocumentationResult.documentation(html)
     }
 
-    override fun computeDocumentationHint(): String? =
-        CssVariableDocumentationService.generateHint(element, varName)
+    override fun computeDocumentationHint(): String? {
+        LOG.info("computeDocumentationHint() called for $varName")
+        return CssVariableDocumentationService.generateHint(element, varName)
+    }
 
     override fun createPointer(): Pointer<out DocumentationTarget> {
         val elementPointer = SmartPointerManager.getInstance(element.project)

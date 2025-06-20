@@ -15,12 +15,12 @@ import com.intellij.util.ProcessingContext
 import com.intellij.util.indexing.FileBasedIndex
 import com.intellij.util.ui.ColorIcon
 import cssvarsassistant.documentation.ColorParser
+import cssvarsassistant.documentation.findPreprocessorVariableValue
 import cssvarsassistant.documentation.lastLocalValueInFile
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.index.DELIMITER
 import cssvarsassistant.model.DocParser
 import cssvarsassistant.settings.CssVarsAssistantSettings
-import cssvarsassistant.util.PreprocessorUtil
 import cssvarsassistant.util.ScopeUtil
 import cssvarsassistant.util.ValueUtil
 import java.awt.Component
@@ -251,11 +251,19 @@ class CssVariableCompletion : CompletionContributor() {
             /* @less / $scss ----------------------------------------------- */
             Regex("""^[\s]*[@$]([\w-]+)$""").find(raw.trim())?.let { m ->
                 val varName = m.groupValues[1]
-                CssVarCompletionCache.get(project, varName)?.let { return it }
+                // **FIXED**: Use getResolved method for backwards compatibility with completion
+                CssVarCompletionCache.getResolved(project, varName)?.let { return it }
 
-                val resolved = findPreprocessorVariableValue(project, varName)
-                if (resolved != null) CssVarCompletionCache.put(project, varName, resolved)
-                return resolved ?: raw
+                val resolved = findPreprocessorVariableValue(project, varName)?.resolved
+                if (resolved != null && resolved != raw) {
+                    // **FIXED**: Store complete ResolutionInfo in cache, but extract resolved value for completion
+                    val resolutionInfo = findPreprocessorVariableValue(project, varName)
+                    if (resolutionInfo != null) {
+                        CssVarCompletionCache.put(project, varName, resolutionInfo)
+                    }
+                    return resolved
+                }
+                return raw
             }
 
             return raw
@@ -397,18 +405,6 @@ class CssVariableCompletion : CompletionContributor() {
         }
     }
 
-
-    private fun findPreprocessorVariableValue(project: Project, varName: String): String? {
-        return try {
-            val freshScope = ScopeUtil.currentPreprocessorScope(project)
-            PreprocessorUtil.resolveVariable(project, varName, freshScope)
-        } catch (e: ProcessCanceledException) {
-            throw e
-        } catch (e: Exception) {
-            logger.warn("Failed to find preprocessor variable: $varName", e)
-            null
-        }
-    }
 }
 
 class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
@@ -418,12 +414,4 @@ class DoubleColorIcon(private val icon1: Icon, private val icon2: Icon) : Icon {
         icon1.paintIcon(c, g, x, y)
         icon2.paintIcon(c, g, x + icon1.iconWidth + 2, y)
     }
-}
-
-private fun lastLocalValue(params: CompletionParameters, varName: String): String? {
-    val text = params.originalFile.text
-    val regex = Regex("""\Q$varName\E\s*:\s*([^;]+);""")
-    return regex.findAll(text)
-        .map { it.groupValues[1].trim() }
-        .lastOrNull()
 }

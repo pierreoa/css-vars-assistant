@@ -4,9 +4,12 @@ import com.intellij.lang.documentation.DocumentationMarkup
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.text.StringUtil
 import cssvarsassistant.model.CssVarDoc
+import cssvarsassistant.settings.CssVarsAssistantSettings
+import cssvarsassistant.util.ARROW_UP_RIGHT
 import cssvarsassistant.util.ValueUtil
 import kotlin.math.pow
 import kotlin.math.roundToInt
+
 
 fun buildHtmlDocument(
     varName: String,
@@ -15,12 +18,26 @@ fun buildHtmlDocument(
     showPixelCol: Boolean,
     winnerIndex: Int = -1  // Default for backward compatibility
 ): String {
+    val settings = CssVarsAssistantSettings.getInstance()
+    val columnVisibility = settings.columnVisibility
 
     /* ── dynamic column decisions ─────────────────────────────────────────── */
-    val showWcagCol = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
-    val showHexCol = sorted.any { (_, r, _) ->
+    val hasColorValues = sorted.any { (_, r, _) -> ColorParser.parseCssColor(r.resolved) != null }
+    val hasNonHexColors = sorted.any { (_, r, _) ->
         ColorParser.parseCssColor(r.resolved)?.let { !r.resolved.trim().startsWith("#") } ?: false
     }
+    val hasName = doc.name.isNotBlank()
+
+    // Determine which columns to actually show
+    val showContextCol = columnVisibility.showContext
+    val showColorSwatchCol = columnVisibility.showColorSwatch && hasColorValues
+    val showValueCol = columnVisibility.showValue
+    val showTypeCol = columnVisibility.showType
+    val showSourceCol = columnVisibility.showSource
+    val showPixelEqCol = columnVisibility.showPixelEquivalent && showPixelCol
+    val showHexCol = columnVisibility.showHexValue && hasColorValues && hasNonHexColors
+    val showWcagCol = columnVisibility.showWcagContrast && hasColorValues
+
 
     val winnerFirstSorted = if (winnerIndex >= 0) {
         val winner = sorted[winnerIndex]
@@ -32,46 +49,43 @@ fun buildHtmlDocument(
 
     /* ── inline-CSS helpers (survive IntelliJ trimming) ────────────────────── */
     val headerWrapperStyle =
-        "style='color:#F2F2F2;padding:2px 4px;font-weight:bold;border-bottom:1px solid #BABABA;'"
-    val rowStyle = "style='white-space:nowrap;padding:2px 4px;color:#BABABA;'"
-    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;font-size:9px!important;'"
+        "style='color:#F2F2F2;padding:0px;font-weight:bold;border-bottom:1px solid #BABABA;'"
+    val rowStyle = "style='white-space:nowrap;padding-top:5px;padding-bottom:5px;color:#BABABA;'"
+    val rowResolvedStyle = "style='white-space:nowrap;color:#F2F2F2;display:inline-block;'"
+    val space = "&nbsp;"
 
     /* ── builder start ─────────────────────────────────────────────────────── */
     val sb = StringBuilder()
         .append(DocumentationMarkup.DEFINITION_START)
 
-    if (doc.name.isNotBlank())
+    if (hasName)
         sb.append("<b>").append(StringUtil.escapeXmlEntities(doc.name)).append("</b><br/>")
 
-    sb.append("<small>CSS Variable: <code>")
-        .append(StringUtil.escapeXmlEntities(varName))
-        .append("</code></small>")
-        .append(DocumentationMarkup.DEFINITION_END)
-        .append(DocumentationMarkup.CONTENT_START)
+    if (!hasName)
+        sb.append("<b>").append(StringUtil.escapeXmlEntities(varName)).append("</b><br/>")
+            .append(DocumentationMarkup.DEFINITION_END)
+            .append(DocumentationMarkup.CONTENT_START)
 
     val hasResolvedValues = winnerFirstSorted.any { (_, resInfo, _) ->
         resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved
     }
 
     if (hasResolvedValues) {
-        sb.append("<p><small><b>Legend:</b> ↗ indicates a value resolved through variable references or imports</small></p>")
+        sb.append("<p><b>$ARROW_UP_RIGHT shows a resolved value</b> – hover it to see every step <i>(resolution chain)</i></p>")
     }
 
     /* ── table header ─────────────────────────────────────────────────────── */
-    sb.append(
-        """
-        <p><b>Values:</b></p>
-        <table>
-          <tr $headerWrapperStyle>
-            <th><nobr>Context</nobr></th>
-            <th>&nbsp;</th>
-            <th><nobr>Value</nobr></th>
-            <th><nobr>Type</nobr></th>
-            <th><nobr>Source</nobr></th>""".trimIndent()
-    )
-    if (showPixelCol) sb.append("<th><nobr>px&nbsp;Eq.</nobr></th>")
+    sb.append("""<table><tr $headerWrapperStyle>""")
+
+    if (showContextCol) sb.append("<th><nobr>Context</nobr></th>")
+    if (showColorSwatchCol) sb.append("<th>&nbsp;</th>")
+    if (showValueCol) sb.append("<th><nobr>Value</nobr></th>")
+    if (showTypeCol) sb.append("<th><nobr>Type</nobr></th>")
+    if (showSourceCol) sb.append("<th><nobr>Source</nobr></th>")
+    if (showPixelEqCol) sb.append("<th><nobr>px&nbsp;Eq.</nobr></th>")
     if (showHexCol) sb.append("<th><nobr>Hex</nobr></th>")
     if (showWcagCol) sb.append("<th><nobr>WCAG</nobr></th>")
+
     sb.append("</tr>")
 
     /* ── table rows ───────────────────────────────────────────────────────── */
@@ -98,30 +112,47 @@ fun buildHtmlDocument(
             "%.2f:1".format((1.05) / (l + 0.05))
         } ?: "—"
         val hexValue = colorObj?.toHex() ?: "—"
-
         /* –– row –– */
         sb.append("<tr style='$rowStyleExtra'>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
-            .append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
-            .append("<td $rowStyle><nobr>")
-            .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
 
-        // Mark overridden values
-        if (isOverridden) {
-            sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
+
+        if (showContextCol) {
+            sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(contextLabel(ctx, isColour))}</nobr></td>")
         }
 
-        // Add resolution indicator
-        if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved)
-            sb.append(
-                """&nbsp;<small title="${StringUtil.escapeXmlEntities(resInfo.steps.joinToString(" → "))}" 
-                            $rowResolvedStyle>↗</small>"""
-            )
-        sb.append("</nobr></td>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
-            .append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+        if (showColorSwatchCol) {
+            sb.append("<td $rowStyle><nobr>${if (isColour) colorSwatchHtml(rawValue) else "&nbsp;"}</nobr></td>")
+        }
 
-        if (showPixelCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
+        if (showValueCol) {
+            // Create a readable tooltip with proper formatting
+            val tooltipText = buildTooltipText(resInfo, rawValue)
+
+            sb.append("<td $rowStyle title='${StringUtil.escapeXmlEntities(tooltipText)}'><nobr>")
+                .append(StringUtil.escapeXmlEntities(rawValue).lowercase())
+
+            // Mark overridden values
+            if (isOverridden) {
+                sb.append(" <span style='opacity:.6'><i>(overridden)</i></span>")
+            }
+
+            // Add resolution indicator
+            if (resInfo.steps.isNotEmpty() && resInfo.original != resInfo.resolved) {
+                sb.append("$space<span $rowResolvedStyle>$space$ARROW_UP_RIGHT$space</span>")
+            }
+            sb.append("</nobr></td>")
+        }
+
+
+        if (showTypeCol) {
+            sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(typeStr).lowercase()}</nobr></td>")
+        }
+
+        if (showSourceCol) {
+            sb.append("<td $rowStyle><nobr>${StringUtil.escapeXmlEntities(sourceStr)}</nobr></td>")
+        }
+
+        if (showPixelEqCol) sb.append("<td $rowStyle><nobr>$pixelEq</nobr></td>")
         if (showHexCol) sb.append("<td $rowStyle><nobr>$hexValue</nobr></td>")
         if (showWcagCol) sb.append("<td $rowStyle><nobr>$contrast</nobr></td>")
 
@@ -142,22 +173,22 @@ fun buildHtmlDocument(
     }
 
     /* ── WebAIM helper link for first colour found ───────────────────────── */
-    sorted.mapNotNull { ColorParser.parseCssColor(it.second.resolved) }
-        .firstOrNull()?.let { c ->
-            sb.append(
-                """<p style='margin-top:10px'>
+    sorted.firstNotNullOfOrNull { ColorParser.parseCssColor(it.second.resolved) }?.let { c ->
+        sb.append(
+            """<p style='margin-top:10px'>
                        <a target="_blank"
                           href="https://webaim.org/resources/contrastchecker/?fcolor=${
-                    c.toHex().removePrefix("#")
-                }&bcolor=000000">
+                c.toHex().removePrefix("#")
+            }&bcolor=000000">
                           Check contrast on WebAIM Contrast Checker
                        </a></p>"""
-            )
-        }
+        )
+    }
 
     sb.append(DocumentationMarkup.CONTENT_END)
     return sb.toString()
 }
+
 
 /* ── tiny util helpers ─────────────────────────────────────────────────────── */
 fun java.awt.Color.toHex(): String =
@@ -212,4 +243,89 @@ fun contextLabel(ctx: String, isColor: Boolean): String {
 }
 
 fun colorSwatchHtml(css: String): String =
-    ColorParser.parseCssColor(css)?.let { "<font color='${it.toHex()}'>&#9632;</font>" } ?: "&nbsp;"
+    ColorParser.parseCssColor(css)?.let {
+        "<div style='background-color:${it.toHex()};border:1px solid #FFFFFF;display:inline-block;width:14px;height:14px;'></div>"
+    } ?: "&nbsp;"
+
+/**
+ * Creates a readable tooltip showing the complete resolution chain
+ */
+private fun buildTooltipText(resInfo: ResolutionInfo, finalValue: String): String {
+    val steps = resInfo.steps
+    if (steps.isEmpty()) return "Resolved through variable references"
+
+    val hasAt = steps.any { '@' in it }
+    val hasDollar = steps.any { '$' in it }
+    val hasCalc = steps.any { '=' in it }
+    val legends = buildList {
+        if (hasAt) add("@ = LESS/SCSS")
+        if (hasDollar) add("$ = SCSS")
+        if (hasCalc) add("= = calculation")
+        if (steps.any { it.startsWith("calc(") }) add("calc() = CSS calc() function")
+        if (steps.any { it.startsWith("var(") }) add("var() = CSS variable reference")
+        if (steps.any { it.startsWith("clamp(") }) add("clamp() = CSS clamp() function")
+        if (steps.any { it.startsWith("min(") || it.startsWith("max(") }) add("min()/max() = CSS min/max functions")
+        if (steps.any { it.startsWith("rgb(") || it.startsWith("rgba(") }) add("rgb()/rgba() = CSS color functions")
+        if (steps.any { it.startsWith("hsl(") || it.startsWith("hsla(") }) add("hsl()/hsla() = CSS color functions")
+        if (steps.any { it.startsWith("url(") }) add("url() = CSS URL function")
+        if (steps.any { it.startsWith("linear-gradient(") }) add("linear-gradient() = CSS gradient function")
+        if (steps.any { it.startsWith("radial-gradient(") }) add("radial-gradient() = CSS gradient function")
+        if (steps.any { it.startsWith("conic-gradient(") }) add("conic-gradient() = CSS gradient function")
+        if (steps.any { it.startsWith("--") }) add("-- = CSS custom property")
+        if (steps.any { it.startsWith("var(--") }) add("var(-- = CSS custom property reference")
+        if (steps.any { it.startsWith("calc(var(--") }) add("calc(var(-- = CSS custom property calculation")
+        if (steps.any { it.startsWith("clamp(var(--") }) add("clamp(var(-- = CSS custom property clamp")
+        if (steps.any { it.startsWith("min(var(--") || it.startsWith("max(var(--") }) add("min(var(--/max(var(-- = CSS custom property min/max")
+        if (steps.any { it.startsWith("rgb(var(--") || it.startsWith("rgba(var(--") }) add("rgb(var(--/rgba(var(-- = CSS custom property color functions")
+        if (steps.any { it.startsWith("hsl(var(--") || it.startsWith("hsla(var(--") }) add("hsl(var(--/hsla(var(-- = CSS custom property color functions")
+        if (steps.any { it.startsWith("url(var(--") }) add("url(var(-- = CSS custom property URL function")
+    }
+
+    return buildString {
+        append("<html><div style='font-family:monospace;color:#F2F2F2;'>")
+        append("<b>Resolution chain:</b><br/><br/>")
+
+        steps.forEachIndexed { i, s ->
+            val colour = when {
+                '@' in s -> "#FFB347"
+                '$' in s -> "#DDA0DD"
+                '=' in s -> "#90EE90"
+                s.startsWith("calc(") -> "#ADD8E6"
+                s.startsWith("var(") -> "#FF6347"
+                s.startsWith("clamp(") -> "#FFD700"
+                s.startsWith("min(") || s.startsWith("max(") -> "#FF69B4"
+                s.startsWith("rgb(") || s.startsWith("rgba(") -> "#FF4500"
+                s.startsWith("hsl(") || s.startsWith("hsla(") -> "#FF8C00"
+                s.startsWith("url(") -> "#00CED1"
+                s.startsWith("linear-gradient(") -> "#20B2AA"
+                s.startsWith("radial-gradient(") -> "#3CB371"
+                s.startsWith("conic-gradient(") -> "#2E8B57"
+                // css `--`
+                s.startsWith("--") -> "#FF1493"
+
+
+                else -> "#F2F2F2"
+            }
+            append("${i + 1}. <span style='color:$colour;'>$s</span>")
+            val INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            val ARROW = "⬇"
+
+            if (i < steps.lastIndex) {
+                append(
+                    "<div style='text-align:left;margin-top:3px;margin-bottom:3px;'>" +
+                            INDENT +
+                            "<span style='font-weight:bold;font-size:10px;'>" +
+                            ARROW +
+                            "</span>" +
+                            "</div>"
+                )
+            }
+        }
+
+
+        append("<br/><br/><b style='color:#98FB98;'>Final value: $finalValue</b>")
+        if (legends.isNotEmpty()) append("<br/><br/><small>(${legends.joinToString(", ")})</small>")
+        append("</div></html>")
+    }
+}
+

@@ -5,6 +5,8 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.containers.CollectionFactory
+import com.intellij.util.containers.CollectionFactory.createConcurrentWeakKeySoftValueMap
 import com.intellij.util.indexing.FileBasedIndex
 import cssvarsassistant.index.CSS_VARIABLE_INDEXER_NAME
 import cssvarsassistant.settings.CssVarsAssistantSettings
@@ -24,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
 class CssVarKeyCache(private val project: Project) : Disposable {
 
     /** map: scopeHash -> variable names that exist in that scope */
-    private val scopeToKeys = ConcurrentHashMap<Int, List<String>>()
+    private val scopeToKeys = createConcurrentWeakKeySoftValueMap<Int, List<String>>()
 
     /**
      * Returns all variable names that exist in the given [scope].
