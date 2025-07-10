@@ -1,5 +1,7 @@
 # CSS Variables Assistant  🔧🎨
 
+If you find CSS Variables Assistant helpful, please consider rating it on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant/reviews) ★★★★★ 🙏.
+
 **Version:** 1.6.0<br/>
 **Compatible IDEs:** WebStorm / IntelliJ Ultimate 2024.1+ (and 2025.1+)  
 **Author:** Stian Larsen  
