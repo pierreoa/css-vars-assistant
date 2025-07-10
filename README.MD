@@ -1,4 +1,4 @@
-# CSS Variables Assistant  🔧🎨
+# CSS Variables Assistant <img width="50" height="50" src="https://raw.githubusercontent.com/Stianlars1/css-vars-assistant/refs/heads/main/src/main/resources/META-INF/pluginIcon.svg" />  🔧🎨
 
 If you find CSS Variables Assistant helpful, please consider rating it on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant/reviews) ★★★★★ 🙏.
 
