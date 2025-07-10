@@ -1,6 +1,8 @@
-<img width="150" height="150" src="https://raw.githubusercontent.com/Stianlars1/css-vars-assistant/refs/heads/main/src/main/resources/META-INF/pluginIcon.svg" />
+<img width="150" height="150" src="https://raw.githubusercontent.com/Stianlars1/css-vars-assistant/refs/heads/main/src/main/resources/META-INF/pluginIcon.svg" /> <br/>
 
 # CSS Variables Assistant 🔧🎨
+![Downloads](https://img.shields.io/jetbrains/plugin/d/27392) ![Rating](https://img.shields.io/jetbrains/plugin/r/stars/27392) ![Version](https://img.shields.io/jetbrains/plugin/v/27392)
+
 
 If you find CSS Variables Assistant helpful, please consider rating it on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27392-css-variables-assistant/reviews) ★★★★★ 🙏.
 
